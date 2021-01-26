@@ -1,6 +1,4 @@
 import * as THREE from 'three';
-import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader';
-import {OBJLoader} from 'three/examples/jsm/loaders/OBJLoader';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
 const ModelManager = {
@@ -57,7 +55,7 @@ const ModelManager = {
       });
     });
   },
-
+/*
   loadTrees_old(loadingManager, textureLoader) {
     return new Promise((resolve) => {
       const nameArr = ["tree_1", "tree_2", "tree_3", "tree_4", "tree_5", "tree_6", "tree_7", "tree_8", "tree_9",
@@ -88,7 +86,7 @@ const ModelManager = {
         });
     });
   },
-
+*/
   applyBottomCenter(mesh) {
     mesh.geometry.computeBoundingBox();
     mesh.geometry.center();

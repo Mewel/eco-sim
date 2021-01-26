@@ -7,7 +7,7 @@ import {ModelManager} from "./ModelManager";
 import {World} from "./World";
 import {Bunny} from "./Bunny";
 import {PathFinder} from "./PathFinder";
-import {getRandomArbitrary} from "./util/util";
+import {getRandomInt} from "./util/util";
 
 let camera, controls, scene, renderer, clock, mixers, world, bunny, pathFinder;
 
@@ -98,7 +98,11 @@ function init() {
 
     // bunny's
     bunny = new Bunny();
-    bunny.model.position.y = world.getHeight(0, 0);
+    let bunnySpawn = new THREE.Vector2(0, 0);
+    while (world.getHeight(bunnySpawn.x, bunnySpawn.y) < 0) {
+      bunnySpawn = new THREE.Vector2(getRandomInt(-2000, 2000), getRandomInt(-2000, 2000));
+    }
+    bunny.model.position.set(bunnySpawn.x, world.getHeight(bunnySpawn.x, bunnySpawn.y), bunnySpawn.z);
     scene.add(bunny.model);
     bunny.debugPath(scene);
 
