@@ -16,9 +16,9 @@
     "lint": "eslint src/js/",
     "webpack-server": "webpack-dev-server --env.NODE_ENV=dev --progress --color --open --hot",
     "webpack-watch": "webpack --env.NODE_ENV=dev --progress --color --watch --hot",
-    "dev:assets:": "copyfiles -a -u 2 src/assets/**/*.* dist/dev/",
+    "dev:assets:": "copyfiles -a -u 2 'src/assets/**/*.*' 'dist/dev/'",
     "dev:js": "webpack --env.NODE_ENV=dev",
-    "build:assets": "copyfiles -a -u 2 src/assets/**/*.* dist/prod/",
+    "build:assets": "copyfiles -a -u 2 'src/assets/**/*.*' 'dist/prod/'",
     "build:js": "webpack --env.NODE_ENV=prod --progress --color --verbose"
   },
   "dependencies": {
