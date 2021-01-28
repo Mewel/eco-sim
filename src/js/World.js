@@ -13,6 +13,7 @@ export class World {
     this.worldGroup = new THREE.Group();
 
     this.heightData = this.generateHeight(tiles, tiles, tileSize);
+    this.waterData = this.buildWaterMap();
 
     const terrainBuilder = new TerrainBuilder();
     this.terrainMesh = terrainBuilder.createGround(tiles * tileSize, this.heightData);
@@ -38,8 +39,8 @@ export class World {
         const key = modelNames[getRandomInt(0, modelNames.length)];
 
         // Instanced
-        let scale = 15;
-        let yScale = getRandomArbitrary(-3, 3);
+        let scale = 20;
+        let yScale = getRandomArbitrary(-5, 5);
         let scaleMatrix = new THREE.Matrix4();
         scaleMatrix.set(scale,
           0, 0, vertices[i] + x,
@@ -88,7 +89,7 @@ export class World {
   getTreeMatrixArray() {
     const arr = [];
     const trees = this.worldGroup.getObjectByName("trees");
-    for(let i = 0; i < trees.children.length; i++) {
+    for (let i = 0; i < trees.children.length; i++) {
       const instancedMesh = trees.children[i];
       for (let j = 0; j < instancedMesh.count; j++) {
         let matrix = new THREE.Matrix4();
@@ -101,7 +102,7 @@ export class World {
 
   debugTrees(scene) {
     this.getTreeMatrixArray().forEach(matrix => {
-      let position = new THREE.Vector3(matrix.elements[12],matrix.elements[13],  matrix.elements[14]);
+      let position = new THREE.Vector3(matrix.elements[12], matrix.elements[13], matrix.elements[14]);
       const geometry = new THREE.BoxGeometry(20, 20, 20);
       const material = new THREE.MeshBasicMaterial({color: 0x00ff00});
       const cube = new THREE.Mesh(geometry, material);
@@ -142,6 +143,55 @@ export class World {
     function smoothstep(min, max, value) {
       let x = Math.max(0, Math.min(1, (value - min) / (max - min)));
       return x * x * (3 - 2 * x);
+    }
+  }
+
+  /**
+   * Creates an array the same size as heightData. Each entry stores the specific heightData index where water can be found.
+   */
+  buildWaterMap() {
+    const map = [];
+
+    for (let i = 0; i < this.heightData.length; i++) {
+      if (this.heightData[i] <= 0) {
+        map[i] = i;
+        continue;
+      }
+      // search from center
+      let center = new THREE.Vector2(i % this.tiles, Math.floor(i / this.tiles));
+      let heightIndex = null;
+      let offset = 1;
+      let side = [1, -1]
+      while (heightIndex === null) {
+        let minDistance = Number.MAX_VALUE;
+        // x-side
+        for (let y = 0; y < side.length && minDistance !== 1; y++) {
+          for (let x = -offset; x <= offset && minDistance !== 1; x++) {
+            let target = new THREE.Vector2(center.x + x, center.y + (side[y] * offset));
+            [minDistance, heightIndex] = update(target, center, this.heightData, this.tiles, minDistance, heightIndex);
+          }
+        }
+        // y-side
+        for (let x = 0; x < side.length && minDistance !== 1; x++) {
+          for (let y = -offset + 1; y < offset && minDistance !== 1; y++) {
+            let target = new THREE.Vector2(center.x + side[x] * offset, center.y);
+            [minDistance, heightIndex] = update(target, center, this.heightData, this.tiles, minDistance, heightIndex);
+          }
+        }
+        offset++;
+      }
+      map[i] = heightIndex;
+    }
+    return map;
+
+    function update(target, center, heightData, tiles, minDistance, heightIndex) {
+      let newHeightIndex = target.x + target.y * tiles;
+      let distance = center.distanceTo(target);
+      if (target.x >= 0 && target.x < tiles && target.y >= 0 && target.y < tiles &&
+        distance < minDistance && heightData[newHeightIndex] <= 0) {
+        return [distance, newHeightIndex];
+      }
+      return [minDistance, heightIndex];
     }
   }
 

@@ -1,3 +1,7 @@
+// styles
+import './../css/app.css';
+
+// js imports
 import * as THREE from 'three';
 
 import {GUI} from 'three/examples/jsm/libs/dat.gui.module';
@@ -5,31 +9,37 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {MapControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {ModelManager} from "./ModelManager";
 import {World} from "./World";
-import {Bunny} from "./Bunny";
+import {Bunny3D} from "./Bunny3D";
 import {PathFinder} from "./PathFinder";
-import {getRandomInt, getRandomArbitrary} from "./util/util";
+import {getRandomInt} from "./util/util";
 import Config from './config';
 
-// Styles
-import './../css/app.css';
+import {CSS2DRenderer} from "three/examples/jsm/renderers/CSS2DRenderer";
+import {BunnyInfo} from "./BunnyInfo";
+import {Bunny} from "./model/Bunny";
+import {FBXLoader} from "three/examples/jsm/loaders/FBXLoader";
 
 // Check environment and set the Config helper
-if(__ENV__ === 'dev') {
+if (__ENV__ === 'dev') {
   console.log('----- RUNNING IN DEV ENVIRONMENT! -----');
   Config.isDev = true;
 }
 
-let camera, controls, scene, renderer, clock, mixers, world, bunny, pathFinder;
+let camera, controls, scene, renderer, clock, mixers, world, pathFinder, labelRenderer;
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+let bunny, bunnyInfo;
 const bunnys = [];
+
+let mixer, foxWalk, foxIdle;
 
 const stats = new Stats();
 stats.domElement.style.position = 'absolute';
 stats.domElement.style.top = '0px';
 document.body.appendChild(stats.domElement);
 window.addEventListener('pointerup', onPointerUp);
+window.addEventListener('keyup', onKeyUp);
 
 init();
 
@@ -42,13 +52,20 @@ function init() {
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
   camera.position.set(500, 500, 500);
 
+  // renderer
   renderer = new THREE.WebGLRenderer({antialias: true});
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.shadowMap.enabled = true;
-
   document.body.appendChild(renderer.domElement);
+
+  // label renderer
+  labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.top = '0px';
+  document.body.appendChild(labelRenderer.domElement);
 
   // light
   const light = new THREE.AmbientLight(0x888888); // soft white light
@@ -67,10 +84,10 @@ function init() {
   scene.add(dirLight);
 
   // controls
-  controls = new MapControls(camera, renderer.domElement);
+  controls = new MapControls(camera, document.body);
   //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
   controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-  controls.dampingFactor = .05;
+  controls.dampingFactor = .08;
   controls.minDistance = 50;
   controls.maxDistance = 5000;
   controls.maxPolarAngle = Math.PI / 2;
@@ -94,6 +111,11 @@ function init() {
   // pathfinder
   pathFinder = new PathFinder(world, 2);
 
+  //
+  let b = new Bunny();
+  b.tick();
+  b.think();
+
   ModelManager.init().then(() => {
     // world
     world.generateTrees(["tree_1", "tree_3"], .05);
@@ -103,11 +125,11 @@ function init() {
       obstacles.push({position, radius: 10});
     });
     pathFinder.buildObstacleGrid(obstacles).updateGrid();
-    //pathFinder.debug(scene);
-    //world.debugTrees(scene);
+    // pathFinder.debug(scene);
+    // world.debugTrees(scene);
 
     // bunny's
-    bunny = new Bunny();
+    bunny = new Bunny3D();
     let bunnySpawn = new THREE.Vector2(0, 0);
     while (world.getHeight(bunnySpawn.x, bunnySpawn.y) < 0) {
       bunnySpawn = new THREE.Vector2(getRandomInt(-2000, 2000), getRandomInt(-2000, 2000));
@@ -115,6 +137,24 @@ function init() {
     bunny.model.position.set(bunnySpawn.x, world.getHeight(bunnySpawn.x, bunnySpawn.y), bunnySpawn.z);
     scene.add(bunny.model);
     bunny.debugPath(scene);
+
+    bunnyInfo = new BunnyInfo(bunny);
+
+    // fox
+    const loader = new FBXLoader();
+    loader.load('models/fuchs.fbx', function (object) {
+      object.traverse(function (child) {
+        if (child.isMesh) {
+          child.castShadow = true;
+          //child.receiveShadow = true;
+        }
+      });
+      scene.add(object);
+      mixer = new THREE.AnimationMixer(object);
+      foxWalk = mixer.clipAction(object.animations[0]);
+      foxIdle = mixer.clipAction(object.animations[1]);
+      foxIdle.play();
+    });
 
     /*for (let i = 0; i < 500; i++) {
       const spawnX = getRandomArbitrary(-2000, 2000);
@@ -148,6 +188,7 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 // TODO: fix drag
@@ -169,13 +210,42 @@ function onPointerUp(event) {
   bunny.jumpTo(point, world, pathFinder);
 }
 
+function onKeyUp(event) {
+  let fade = .5;
+  if (event.code === "Space") {
+    if (foxWalk.isRunning()) {
+      foxWalk.fadeOut(fade);
+      foxIdle
+        .reset()
+        .setEffectiveTimeScale(1)
+        .setEffectiveWeight(1)
+        .fadeIn(fade)
+        .play();
+    } else {
+      foxWalk
+        .reset()
+        .setEffectiveTimeScale(1)
+        .setEffectiveWeight(1)
+        .fadeIn(fade)
+        .play();
+      foxIdle.fadeOut(fade);
+    }
+  }
+}
+
 function animate() {
   const delta = clock.getDelta();
   requestAnimationFrame(animate);
   controls.update();
   stats.update();
+  if (mixer) {
+    mixer.update(delta);
+  }
   if (bunny) {
     bunny.update();
+  }
+  if (bunnyInfo) {
+    bunnyInfo.update();
   }
   pathFinder.update();
   bunnys.forEach(b => b.update());
@@ -183,5 +253,6 @@ function animate() {
 }
 
 function render() {
+  labelRenderer.render(scene, camera);
   renderer.render(scene, camera);
 }

@@ -16,18 +16,19 @@
     "lint": "eslint src/js/",
     "webpack-server": "webpack-dev-server --env.NODE_ENV=dev --progress --color --open --hot",
     "webpack-watch": "webpack --env.NODE_ENV=dev --progress --color --watch --hot",
-    "dev:assets:": "copyfiles -a -u 2 'src/assets/**/*.*' 'dist/dev/'",
+    "dev:assets": "copyfiles -a -u 2 src/assets/**/*.* dist/dev/",
     "dev:js": "webpack --env.NODE_ENV=dev",
-    "build:assets": "copyfiles -a -u 2 'src/assets/**/*.*' 'dist/prod/'",
+    "build:assets": "copyfiles -a -u 2 'src/assets/**/*.*' dist/prod/",
     "build:js": "webpack --env.NODE_ENV=prod --progress --color --verbose"
   },
   "dependencies": {
     "easystarjs": "^0.4.4",
     "express": "^4.17.1",
-    "three": "^0.124.0"
+    "three": "^0.125.1"
   },
   "devDependencies": {
     "@babel/core": "^7.10.4",
+    "@babel/plugin-proposal-class-properties": "^7.12.1",
     "@babel/preset-env": "^7.10.4",
     "autoprefixer": "^9.8.4",
     "babel-loader": "^8.1.0",

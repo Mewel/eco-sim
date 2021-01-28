@@ -55,6 +55,76 @@ const ModelManager = {
       });
     });
   },
+
+
+  applyBottomCenter(mesh) {
+    mesh.geometry.computeBoundingBox();
+    mesh.geometry.center();
+    mesh.geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(0, mesh.geometry.boundingBox.min.y * -1, 0));
+  },
+
+  create(modelName) {
+    return this.model[modelName].clone();
+  },
+
+  createGeometry(modelName) {
+    return this.model[modelName].geometry.clone();
+  },
+
+  material(modelName) {
+    return this.model[modelName].material;
+  },
+
+  getClip(modelName, clipName) {
+    return THREE.AnimationClip.findByName(this.animation[modelName], clipName);
+  }
+
+}
+
+export {ModelManager};
+
+
+/*
+ // direct loading works - with animation. not sure why
+   const loader = new FBXLoader();
+   loader.load('models/fuchs.fbx', function (object) {
+     object.traverse(function (child) {
+       if (child.isMesh) {
+         child.castShadow = true;
+         //child.receiveShadow = true;
+       }
+     });
+     scene.add(object);
+   });
+
+ // this does not work. not sure why. animation is not playing
+ loadFox(loadingManager) {
+   return new Promise((resolve) => {
+     const scope = this;
+     const loader = new FBXLoader(loadingManager);
+     loader.load('models/fuchs.fbx', function (object) {
+       object.traverse(function (child) {
+         if (child.isMesh) {
+           child.castShadow = true;
+           //child.receiveShadow = true;
+         }
+       });
+       scope.model["fox"] = object;
+       scope.animation["fox"] = object.animations;
+       resolve();
+     });
+   });
+ },
+
+ // fox
+ let object = ModelManager.create("fox");
+ mixer = new THREE.AnimationMixer(object);
+ let clip = ModelManager.getClip("fox", "rig|Laufen");
+ const action = mixer.clipAction(clip);
+ action.play();
+ scene.add(object);
+ */
+
 /*
   loadTrees_old(loadingManager, textureLoader) {
     return new Promise((resolve) => {
@@ -87,28 +157,3 @@ const ModelManager = {
     });
   },
 */
-  applyBottomCenter(mesh) {
-    mesh.geometry.computeBoundingBox();
-    mesh.geometry.center();
-    mesh.geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(0, mesh.geometry.boundingBox.min.y * -1, 0));
-  },
-
-  create(modelName) {
-    return this.model[modelName].clone();
-  },
-
-  createGeometry(modelName) {
-    return this.model[modelName].geometry.clone();
-  },
-
-  material(modelName) {
-    return this.model[modelName].material;
-  },
-
-  getClip(model, clipName) {
-    return THREE.AnimationClip.findByName(this.animation[model.name], clipName);
-  }
-
-}
-
-export {ModelManager};
