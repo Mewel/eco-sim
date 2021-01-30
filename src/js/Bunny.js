@@ -1,9 +1,12 @@
+import * as THREE from 'three';
 import {Bunny3D} from "./Bunny3D";
+import {getRandomInt} from "./util/util";
 
 export class Bunny {
 
   static Actions = Object.freeze({
     idle: Symbol("idle"),
+    sleep: Symbol("sleep"),
     drink: Symbol("drink"),
     eat: Symbol("eat"),
     searchFood: Symbol("searchFood"),
@@ -21,7 +24,7 @@ export class Bunny {
   tick(world, pathFinder) {
     this.update(world);
     const newAction = this.think();
-    if (newAction !== this.action) {
+    if (newAction !== this.action || newAction === Bunny.Actions.idle) {
       this.action = newAction;
       this.act(world, pathFinder);
     }
@@ -45,8 +48,10 @@ export class Bunny {
       }
     }
 
-    if (this.action === Bunny.Actions.idle) {
-      this.exhaustion -= .05;
+    if (this.action === Bunny.Actions.sleep) {
+      this.exhaustion -= .02;
+      this.thirst -= .005;
+      this.hunger -= .0025;
     } else if (this.action === Bunny.Actions.drink) {
       this.thirst -= .1;
     } else if (this.action === Bunny.Actions.eat) {
@@ -76,7 +81,8 @@ export class Bunny {
     // basic needs
     // doing something already
     const busy = (this.action === Bunny.Actions.eat && this.hunger > 0) ||
-      (this.action === Bunny.Actions.drink && this.thirst > 0);
+      (this.action === Bunny.Actions.drink && this.thirst > 0) ||
+      (this.action === Bunny.Actions.sleep && this.exhaustion > 0);
 
     const needs = [];
     if (!busy || this.exhaustion > .8) {
@@ -92,6 +98,11 @@ export class Bunny {
       needs.push({
         action: (this.action === Bunny.Actions.eat) ? Bunny.Actions.eat : Bunny.Actions.searchFood,
         importance: this.hunger
+      });
+    }
+    if (this.exhaustion > .7) {
+      needs.push({
+        action: Bunny.Actions.sleep, importance: this.exhaustion
       });
     }
     if (needs.length === 0) {
@@ -111,6 +122,10 @@ export class Bunny {
       const grid = world.toGrid(this.model.position.x, this.model.position.z);
       const closestFoodTile = world.getClosestFoodTile(grid.x, grid.y);
       this.model.jumpToDebug(closestFoodTile, world, pathFinder);
+    } else if (this.action === Bunny.Actions.idle && !this.model.isMoving() && Math.random() < .75) {
+      const offset = new THREE.Vector2(getRandomInt(-5, 5), getRandomInt(-5, 5));
+      const pos = world.toGrid(this.model.position.x, this.model.position.z);
+      this.model.jumpToDebug(pos.add(offset), world, pathFinder);
     }
   }
 

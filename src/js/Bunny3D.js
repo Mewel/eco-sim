@@ -67,10 +67,14 @@ export class Bunny3D extends THREE.Group {
     this.jumpAction.stop();
   }
 
+  isMoving() {
+    return this.distanceTraveled !== null && this.distanceTraveled !== undefined;
+  }
+
   update() {
     const delta = this.clock.getDelta();
     this.mixer.update(delta);
-    if (this.distanceTraveled === null || this.distanceTraveled === undefined) {
+    if (!this.isMoving()) {
       return;
     }
     if (this.distanceTraveled >= 1) {

@@ -6,7 +6,6 @@ export class BunnyInfo {
     this.bunny = bunny;
     this.content = this.create();
     this.infoObject = new CSS2DObject(this.content);
-    this.infoObject.position.set(0, 10, 0);
     this.bunny.model.add(this.infoObject);
     this.actionElement = this.content.getElementsByClassName("action")[0];
     this.exhaustionProgressElement = this.content.getElementsByClassName("exhaustion")[0].getElementsByClassName("progress-bar")[0];
@@ -37,7 +36,7 @@ export class BunnyInfo {
   }
 
   update(camera) {
-    this.infoObject.position.y = 15 + camera.position.y / 10;
+    this.infoObject.position.set(0, 20 + camera.position.y / 8, 0);
 
     this.actionElement.textContent = this.bunny.action.description;
     this.thirstProgressElement.style.width = (this.bunny.thirst * 100) + "%";
