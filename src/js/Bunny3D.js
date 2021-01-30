@@ -1,36 +1,42 @@
 import * as THREE from "three";
 import {ModelManager} from "./ModelManager";
 
-export class Bunny3D {
+export class Bunny3D extends THREE.Group {
 
   /**
    * Creates a new bunny instance. Requires that ModelManager is fully loaded.
    */
   constructor() {
-    this.model = new THREE.Group();
+    super();
     const bunny = ModelManager.create("rabbit");
     bunny.castShadow = true;
     bunny.receiveShadow = true;
     bunny.scale.set(.5, .5, .5);
-    this.model.add(bunny);
+    this.add(bunny);
     this.mixer = new THREE.AnimationMixer(bunny);
     this.jumpClip = ModelManager.getClip("rabbit", "jump");
     this.jumpAction = this.mixer.clipAction(this.jumpClip);
     this.jumpAction.stop();
-    this.jumpUnitsPerSecond = 160;
+    this.jumpUnitsPerSecond = 50;
     this.clock = new THREE.Clock();
   }
 
-  jumpTo(point, world, pathFinder) {
-    return pathFinder.getCurve(this.model.position.x, this.model.position.z, point.x, point.z).then((curve) => {
+  jumpTo(to, world, pathFinder) {
+    const from = world.toGrid(this.position.x, this.position.z)
+    return pathFinder.getCurve(from.x, from.y, to.x, to.y).then((curve) => {
       this.follow(world, curve);
+    });
+  }
+
+  jumpToDebug(to, world, pathFinder) {
+    return this.jumpTo(to, world, pathFinder).then(() => {
       if (!this.showPath) {
         return;
       }
       if (this.pathHelper) {
         this.scene.remove(this.pathHelper);
       }
-      const points = curve.getPoints(200);
+      const points = this.targetCurve.getPoints(200);
       points.forEach(p => p.y += 10);
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
       const material = new THREE.LineBasicMaterial({color: 0xff0000});
@@ -76,12 +82,12 @@ export class Bunny3D {
     this.distanceTraveled = Math.min(1., this.distanceTraveled + speed);
     const newPosition = this.targetCurve.getPointAt(this.distanceTraveled);
     const tangent = this.targetCurve.getTangent(this.distanceTraveled);
-    this.model.position.copy(newPosition);
+    this.position.copy(newPosition);
     if (this.distanceTraveled + speed <= 1) {
-      this.model.rotation.x = tangent.x;
-      this.model.rotation.y = tangent.y;
-      this.model.rotation.z = tangent.z;
-      this.model.lookAt(this.targetCurve.getPointAt(this.distanceTraveled + speed));
+      this.rotation.x = tangent.x;
+      this.rotation.y = tangent.y;
+      this.rotation.z = tangent.z;
+      this.lookAt(this.targetCurve.getPointAt(this.distanceTraveled + speed));
     }
   }
 

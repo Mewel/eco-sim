@@ -1,17 +1,19 @@
 import * as THREE from 'three';
-import {noise} from "./util/perlin";
+import {noise} from "../util/perlin";
 import {TerrainBuilder} from "./TerrainBuilder";
-import {ModelManager} from "./ModelManager";
-import {getRandomArbitrary, getRandomInt} from "./util/util";
+import {ModelManager} from "../ModelManager";
+import {getRandomArbitrary, getRandomInt} from "../util/util";
 
 export class World {
 
   constructor(tiles, tileSize) {
-    const scope = this;
     this.tiles = tiles;
+    this.halfTiles = this.tiles / 2;
     this.tileSize = tileSize;
-    this.worldGroup = new THREE.Group();
+    this.mapSize = this.tiles * this.tileSize;
+    this.mapHalfSize = this.mapSize / 2;
 
+    this.worldGroup = new THREE.Group();
     this.heightData = this.generateHeight(tiles, tiles, tileSize);
     this.waterData = this.buildWaterMap();
 
@@ -158,7 +160,7 @@ export class World {
         continue;
       }
       // search from center
-      let center = new THREE.Vector2(i % this.tiles, Math.floor(i / this.tiles));
+      let center = this.toGridVector(i);
       let heightIndex = null;
       let offset = 1;
       let side = [1, -1]
@@ -228,6 +230,35 @@ export class World {
     const v4 = this.heightData[p4.x + p4.y * this.tiles] * ((a4.x + a4.y) / 4);
 
     return v1 + v2 + v3 + v4;
+  }
+
+  toGrid(sceneX, sceneZ) {
+    return new THREE.Vector2(Math.ceil((sceneX + this.mapHalfSize) / this.tileSize), Math.ceil((sceneZ + this.mapHalfSize) / this.tileSize));
+  }
+
+  toScene(gridX, gridY) {
+    const sceneX = (gridX - this.halfTiles) * this.tileSize;
+    const sceneZ = (gridY - this.halfTiles) * this.tileSize;
+    return new THREE.Vector3(sceneX, this.getHeight(sceneX, sceneZ), sceneZ);
+  }
+
+  toGridVector(index) {
+    return new THREE.Vector2(index % this.tiles, Math.floor(index / this.tiles));
+  }
+
+  /**
+   * Returns the closet water tile from the given position.
+   *
+   * @param sceneX
+   * @param sceneZ
+   * @return Vector3 in scene coordinates
+   */
+  getClosestWaterTile(sceneX, sceneZ) {
+    let sourceVector = this.toGrid(sceneX, sceneZ);
+    let heightIndex = sourceVector.x + sourceVector.y * this.tiles;
+    const targetIndex = this.waterData[heightIndex];
+    const targetGridVector = this.toGridVector(targetIndex);
+    return this.toScene(targetGridVector.x, targetGridVector.y);
   }
 
 }

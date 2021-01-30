@@ -13,7 +13,8 @@ const ModelManager = {
     const loadingManager = new THREE.LoadingManager();
     return Promise.all([
       this.loadTrees(loadingManager),
-      this.loadRabbit(loadingManager)
+      this.loadGLB("rabbit", loadingManager),
+      this.loadGLB("carrot", loadingManager)
     ]).then(() => {
       scope.readyFlag = true;
       scope.resolveAwaiters.forEach(resolve => resolve());
@@ -31,13 +32,13 @@ const ModelManager = {
     });
   },
 
-  loadRabbit(loadingManager) {
+  loadGLB(name, loadingManager) {
     return new Promise((resolve) => {
       const scope = this;
       const loader = new GLTFLoader(loadingManager);
-      loader.load("models/rabbit.glb", function (gltf) {
-        scope.model["rabbit"] = gltf.scene.children[0];
-        scope.animation["rabbit"] = gltf.animations;
+      loader.load("models/" + name + ".glb", function (gltf) {
+        scope.model[name] = gltf.scene.children[0];
+        scope.animation[name] = gltf.animations;
         resolve();
       });
     });
@@ -55,7 +56,6 @@ const ModelManager = {
       });
     });
   },
-
 
   applyBottomCenter(mesh) {
     mesh.geometry.computeBoundingBox();
@@ -83,47 +83,6 @@ const ModelManager = {
 
 export {ModelManager};
 
-
-/*
- // direct loading works - with animation. not sure why
-   const loader = new FBXLoader();
-   loader.load('models/fuchs.fbx', function (object) {
-     object.traverse(function (child) {
-       if (child.isMesh) {
-         child.castShadow = true;
-         //child.receiveShadow = true;
-       }
-     });
-     scene.add(object);
-   });
-
- // this does not work. not sure why. animation is not playing
- loadFox(loadingManager) {
-   return new Promise((resolve) => {
-     const scope = this;
-     const loader = new FBXLoader(loadingManager);
-     loader.load('models/fuchs.fbx', function (object) {
-       object.traverse(function (child) {
-         if (child.isMesh) {
-           child.castShadow = true;
-           //child.receiveShadow = true;
-         }
-       });
-       scope.model["fox"] = object;
-       scope.animation["fox"] = object.animations;
-       resolve();
-     });
-   });
- },
-
- // fox
- let object = ModelManager.create("fox");
- mixer = new THREE.AnimationMixer(object);
- let clip = ModelManager.getClip("fox", "rig|Laufen");
- const action = mixer.clipAction(clip);
- action.play();
- scene.add(object);
- */
 
 /*
   loadTrees_old(loadingManager, textureLoader) {
