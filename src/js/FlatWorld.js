@@ -5,6 +5,7 @@ import {FlatTerrainBuilder} from "./FlatTerrainBuilder";
 import {ModelManager} from "./ModelManager";
 import {debugBox, getMax, getMin, getRandomArbitrary, getRandomInt, radialSearch} from "./util/util";
 import {Region} from "./Region";
+import {Settings} from "./Settings";
 
 export class FlatWorld {
 
@@ -20,11 +21,21 @@ export class FlatWorld {
 
     this.worldGroup = new THREE.Group();
     this.worldGroup.add(this.terrain);
-    this.worldGroup.add(terrainBuilder.createWater(tiles, tileSize))
-
+    this.water = terrainBuilder.createWater(tiles, tileSize);
+    this.worldGroup.add(this.water);
     this.obstacles = {};
     this.waterMap = [];
     this.regions = [];
+
+    let scope = this;
+    Settings.onChange.push((key, value) => {
+      if (key === "speed") {
+        scope.water.material.uniforms['flowDirection'] = {
+          type: 'v2',
+          value: new Vector2(.2 * value, .2 * value)
+        }
+      }
+    });
   }
 
   generateHeight(width, height, size) {

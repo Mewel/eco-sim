@@ -96,9 +96,6 @@ export class Bunny {
       (this.action === Bunny.Actions.sleep && this.exhaustion > 0);
 
     const needs = [];
-    if (!busy || this.exhaustion > .8) {
-      needs.push({action: Bunny.Actions.idle, importance: this.exhaustion});
-    }
     if (this.thirst > .8 || (!busy && this.thirst > .3)) {
       needs.push({
         action: (this.action === Bunny.Actions.drink) ? Bunny.Actions.drink : Bunny.Actions.searchWater,
@@ -111,17 +108,17 @@ export class Bunny {
         importance: this.hunger
       });
     }
-    if (this.exhaustion > .7) {
+    if ((!busy && this.exhaustion > .7) || this.exhaustion > .99) {
       needs.push({
         action: Bunny.Actions.sleep, importance: this.exhaustion
       });
     }
     if (needs.length === 0) {
-      return this.action;
+      return busy ? this.action : Bunny.Actions.idle;
+    } else {
+      const resultingNeed = needs.reduce((need, nextNeed) => (nextNeed.importance > need.importance ? nextNeed : need), needs[0]);
+      return resultingNeed.action;
     }
-    // need
-    const resultingNeed = needs.reduce((need, nextNeed) => (nextNeed.importance > need.importance ? nextNeed : need), needs[0]);
-    return resultingNeed.action;
   }
 
   act(world, pathFinder) {

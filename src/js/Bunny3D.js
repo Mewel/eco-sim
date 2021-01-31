@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {ModelManager} from "./ModelManager";
+import {Settings} from "./Settings";
 
 export class Bunny3D extends THREE.Group {
 
@@ -18,7 +19,7 @@ export class Bunny3D extends THREE.Group {
     this.jumpClip = ModelManager.getClip("rabbit", "jump");
     this.jumpAction = this.mixer.clipAction(this.jumpClip);
     this.jumpAction.stop();
-    this.jumpUnitsPerSecond = 50;
+    this.jumpUnitsPerTick = 50;
     this.clock = new THREE.Clock();
   }
 
@@ -63,8 +64,8 @@ export class Bunny3D extends THREE.Group {
     this.totalDistance = curve.getLength();
     this.distanceTraveled = 0;
     this.jumpAction.reset();
-    const jumpTimes = Math.ceil(this.totalDistance / (this.jumpUnitsPerSecond / 2));
-    this.jumpAction.timeScale = jumpTimes / (this.totalDistance / this.jumpUnitsPerSecond);
+    const jumpTimes = Math.ceil(this.totalDistance / (this.jumpUnitsPerTick / 2)) * Settings.speed;
+    this.jumpAction.timeScale = jumpTimes / (this.totalDistance / this.jumpUnitsPerTick);
     this.jumpAction.play();
   }
 
@@ -102,7 +103,7 @@ export class Bunny3D extends THREE.Group {
       this.jumpAction.stop();
       return;
     }
-    const speed = (1 / this.totalDistance) * delta * this.jumpUnitsPerSecond;
+    const speed = (1 / this.totalDistance) * delta * this.jumpUnitsPerTick * Settings.speed;
     this.distanceTraveled = Math.min(1., this.distanceTraveled + speed);
     const newPosition = this.targetCurve.getPointAt(this.distanceTraveled);
     const tangent = this.targetCurve.getTangent(this.distanceTraveled);

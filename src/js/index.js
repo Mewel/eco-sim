@@ -8,7 +8,7 @@ import {GUI} from 'three/examples/jsm/libs/dat.gui.module';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {MapControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {ModelManager} from "./ModelManager";
-import Config from './config';
+import {Settings} from "./Settings";
 import {debugBox, getRandomInt, radialSearch} from "./util/util";
 
 import {CSS2DRenderer} from "three/examples/jsm/renderers/CSS2DRenderer";
@@ -17,20 +17,12 @@ import {Bunny} from "./Bunny";
 import {PathFinder} from "./PathFinder";
 import {BunnyInfo} from "./BunnyInfo";
 
-// Check environment and set the Config helper
-if (__ENV__ === 'dev') {
-  console.log('----- RUNNING IN DEV ENVIRONMENT! -----');
-  Config.isDev = true;
-}
-
-let camera, controls, scene, renderer, clock, mixers, world, pathFinder, labelRenderer;
+let camera, controls, scene, renderer, clock, mixers, world, pathFinder, labelRenderer, bunnyInfo;
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-let bunnyInfo = new BunnyInfo();
 const bunnys = [];
 let bunnyGroup = new THREE.Group();
-let tickTime = 0.5;
 let currentTickTime = 0;
 
 const stats = new Stats();
@@ -63,6 +55,7 @@ function init() {
   labelRenderer.setSize(window.innerWidth, window.innerHeight);
   labelRenderer.domElement.style.position = 'absolute';
   labelRenderer.domElement.style.top = '0px';
+  labelRenderer.domElement.style.pointerEvents = 'none';
   document.body.appendChild(labelRenderer.domElement);
 
   // light
@@ -82,7 +75,7 @@ function init() {
   scene.add(dirLight);
 
   // controls
-  controls = new MapControls(camera, document.body);
+  controls = new MapControls(camera, renderer.domElement);
   //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
   controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
   controls.dampingFactor = .08;
@@ -110,8 +103,9 @@ function init() {
   const axesHelper = new THREE.AxesHelper(2000);
   scene.add(axesHelper);
 
-  // pathfinder
+  // util stuff
   pathFinder = new PathFinder(world);
+  bunnyInfo = new BunnyInfo(world);
 
   ModelManager.init().then(() => {
     // world
@@ -142,7 +136,7 @@ function init() {
   window.addEventListener('resize', onWindowResize, false);
 
   const gui = new GUI();
-  gui.add(controls, 'screenSpacePanning');
+  gui.add(Settings, "speed", 1, 100, 1);
 }
 
 animate();
@@ -155,7 +149,6 @@ function onWindowResize() {
 }
 
 
-// TODO: fix drag
 function onPointerUp(event) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -196,7 +189,7 @@ function onPointerUp(event) {
 function animate() {
   const delta = clock.getDelta();
   currentTickTime += delta;
-  if (currentTickTime > tickTime) {
+  if (currentTickTime > (1 / Settings.speed)) {
     bunnys.forEach(bunny => bunny.tick(world, pathFinder));
     currentTickTime = 0;
   }
