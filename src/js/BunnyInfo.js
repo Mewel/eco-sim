@@ -7,6 +7,8 @@ export class BunnyInfo {
     this.content = this.create();
     this.infoObject = new CSS2DObject(this.content);
     this.nameElement = this.content.getElementsByClassName("name")[0];
+    this.aliveElement = this.content.getElementsByClassName("alive")[0];
+    this.deadElement = this.content.getElementsByClassName("dead")[0];
     this.actionElement = this.content.getElementsByClassName("action")[0];
     this.exhaustionProgressElement = this.content.getElementsByClassName("exhaustion")[0].getElementsByClassName("progress-bar")[0];
     this.thirstProgressElement = this.content.getElementsByClassName("thirst")[0].getElementsByClassName("progress-bar")[0];
@@ -18,37 +20,48 @@ export class BunnyInfo {
     template.innerHTML = `
       <div class="info">
         <div class="name"></div>
-        <div class="exhaustion progress">
-          <span style="width: 0%" class="progress-bar"></span>
-          <span class="progress-text">exhaustion</span>
-        </div>
-        <div class="thirst progress">
-          <span style="width: 0%" class="progress-bar"></span>
-          <span class="progress-text">thirst</span>
-        </div>
-        <div class="hunger progress">
-          <span style="width: 0%" class="progress-bar"></span>
-          <span class="progress-text">hunger</span>
-        </div>
-        <div class="action"></div>
+        <div class="alive">
+          <div class="exhaustion progress">
+            <span style="width: 0%" class="progress-bar"></span>
+            <span class="progress-text">exhaustion</span>
+          </div>
+          <div class="thirst progress">
+            <span style="width: 0%" class="progress-bar"></span>
+            <span class="progress-text">thirst</span>
+          </div>
+          <div class="hunger progress">
+            <span style="width: 0%" class="progress-bar"></span>
+            <span class="progress-text">hunger</span>
+          </div>
+          <div class="action"></div>
+         </div>
+         <div class="dead">
+         </div>
       </div>;
     `.trim();
     return template.content.firstChild;
   }
 
   update(camera) {
-    this.infoObject.position.set(0, 20 + camera.position.y / 5, 0);
-
     this.nameElement.textContent = this.bunny.name;
-    this.actionElement.textContent = this.bunny.action.description;
-    if (this.bunny.action === Bunny.Actions.searchFood) {
-      this.actionElement.textContent = this.bunny.resourceFound ? "food found" : "search food";
-    } else if (this.bunny.action === Bunny.Actions.searchWater) {
-      this.actionElement.textContent = this.bunny.resourceFound ? "water found" : "search water";
+    let dead = this.bunny.isDead();
+    this.aliveElement.style.display = dead ? "none" : "block";
+    this.deadElement.style.display = dead ? "block" : "none";
+    if (dead) {
+      this.infoObject.position.set(0, 20 + camera.position.y / 10, 0);
+      this.deadElement.textContent = "died because of " + this.bunny.dead.causeOfDeath;
+    } else {
+      this.infoObject.position.set(0, 20 + camera.position.y / 5, 0);
+      this.actionElement.textContent = this.bunny.action.description;
+      if (this.bunny.action === Bunny.Actions.searchFood) {
+        this.actionElement.textContent = this.bunny.resourceFound ? "food found" : "search food";
+      } else if (this.bunny.action === Bunny.Actions.searchWater) {
+        this.actionElement.textContent = this.bunny.resourceFound ? "water found" : "search water";
+      }
+      this.thirstProgressElement.style.width = (this.bunny.thirst * 100) + "%";
+      this.hungerProgressElement.style.width = (this.bunny.hunger * 100) + "%";
+      this.exhaustionProgressElement.style.width = (this.bunny.exhaustion * 100) + "%";
     }
-    this.thirstProgressElement.style.width = (this.bunny.thirst * 100) + "%";
-    this.hungerProgressElement.style.width = (this.bunny.hunger * 100) + "%";
-    this.exhaustionProgressElement.style.width = (this.bunny.exhaustion * 100) + "%";
   }
 
   assignBunny(bunny) {

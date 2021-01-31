@@ -22,10 +22,13 @@ export class Bunny {
     this.name = "bunny #" + i;
     this.resourceFound = false;
     this.model = new Bunny3D(this.name);
+    this.dead = null;
   }
 
   tick(world, pathFinder) {
-    this.update(world);
+    if (this.update(world)) {
+      return;
+    }
     const newAction = this.think();
     if (newAction !== this.action) {
       this.resourceFound = false;
@@ -35,6 +38,9 @@ export class Bunny {
   }
 
   update(world) {
+    if (this.isDead()) {
+      return true;
+    }
     this.thirst += .01;
     this.hunger += .005;
     this.exhaustion += .001;
@@ -67,12 +73,13 @@ export class Bunny {
     this.hunger = this.hunger <= 0 ? 0 : this.hunger;
 
     if (this.thirst > 1) {
-      this.die("thirst");
+      return this.die("thirst");
     } else if (this.exhaustion > 1) {
-      this.die("exhaustion");
+      return this.die("exhaustion");
     } else if (this.hunger > 1) {
-      this.die("hunger");
+      return this.die("hunger");
     }
+    return false;
   }
 
   /**
@@ -136,7 +143,7 @@ export class Bunny {
     } else if (this.action === Bunny.Actions.searchFood && !this.resourceFound) {
       const grid = world.toGrid(this.model.position.x, this.model.position.z);
       const availableFood = world.getAvailableFood(grid.x, grid.y, this.rangeOfSight);
-      if (availableFood.length === 0) {
+      if (availableFood.length === 0 || !availableFood[0]) {
         if (!this.model.isMoving()) {
           this.jumpRandom(world, pathFinder);
         }
@@ -161,9 +168,16 @@ export class Bunny {
     this.model.jumpToIgnore(pos.add(offset), world, pathFinder);
   }
 
-  die(cause) {
-    // TODO
-    console.log("bunny died due " + cause);
+  isDead() {
+    return this.dead !== null;
+  }
+
+  die(causeOfDeath) {
+    this.dead = {
+      causeOfDeath: causeOfDeath
+    };
+    this.model.die();
+    return true;
   }
 
 }

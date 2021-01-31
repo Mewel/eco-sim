@@ -23,6 +23,9 @@ export class Bunny3D extends THREE.Group {
   }
 
   jumpTo(to, world, pathFinder) {
+    if(this.died) {
+      console.log("jumpTo");
+    }
     const from = world.toGrid(this.position.x, this.position.z)
     return pathFinder.getCurve(from.x, from.y, to.x, to.y).then((curve) => {
       this.follow(world, curve);
@@ -53,6 +56,9 @@ export class Bunny3D extends THREE.Group {
   }
 
   follow(world, curve) {
+    if(this.died) {
+      console.log("follow");
+    }
     this.targetCurve = curve;
     this.totalDistance = curve.getLength();
     this.distanceTraveled = 0;
@@ -70,11 +76,19 @@ export class Bunny3D extends THREE.Group {
   stop() {
     this.distanceTraveled = null;
     this.targetCurve = null;
+    this.mixer.stopAllAction();
     this.jumpAction.stop();
   }
 
   isMoving() {
     return this.distanceTraveled !== null && this.distanceTraveled !== undefined;
+  }
+
+  die() {
+    this.stop();
+    this.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+
+    this.died = true;
   }
 
   update() {

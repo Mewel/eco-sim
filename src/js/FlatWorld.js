@@ -3,7 +3,7 @@ import {Vector2} from "three";
 import {noise} from "./util/perlin";
 import {FlatTerrainBuilder} from "./FlatTerrainBuilder";
 import {ModelManager} from "./ModelManager";
-import {getMax, getMin, getRandomArbitrary, getRandomInt, radialSearch} from "./util/util";
+import {debugBox, getMax, getMin, getRandomArbitrary, getRandomInt, radialSearch} from "./util/util";
 import {Region} from "./Region";
 
 export class FlatWorld {
@@ -202,17 +202,41 @@ export class FlatWorld {
 
   getClosestWaterTile(gridX, gridZ, maxGridDistance) {
     const closestTile = this.waterMap[gridX + gridZ * this.tiles];
+    if (!closestTile) {
+      if (this.isWater(gridX, gridZ) || this.hasObstacle(gridX, gridZ)) {
+        // sometimes the bunny hops over a water or obstacle tile when searching for water.
+        return null;
+      }
+      console.error("no closest water tile for ", gridX, gridZ);
+      debugBox(this, gridX, gridZ, 0x0000ff);
+      return null;
+    }
     return new THREE.Vector2(gridX, gridZ).distanceTo(closestTile) <= maxGridDistance ? closestTile : null;
   }
 
   getAvailableFood(gridX, gridZ, maxGridDistance) {
-    return this.getRegion(gridX, gridZ).getFood(this, gridX, gridZ, maxGridDistance);
+    const region = this.getRegion(gridX, gridZ);
+    if (!region) {
+      if (this.isWater(gridX, gridZ) || this.hasObstacle(gridX, gridZ)) {
+        // sometimes the bunny hops over a water or obstacle tile when searching for food.
+        return [];
+      }
+      console.error("no region for ", gridX, gridZ);
+      debugBox(this, gridX, gridZ, 0x00ff00);
+      return false;
+    }
+    return region.getFood(this, gridX, gridZ, maxGridDistance);
   }
 
   hasFood(gridX, gridZ) {
     const region = this.getRegion(gridX, gridZ);
     if (!region) {
+      if (this.isWater(gridX, gridZ) || this.hasObstacle(gridX, gridZ)) {
+        // sometimes the bunny hops over a water or obstacle tile when searching for food.
+        return false;
+      }
       console.error("no region for ", gridX, gridZ);
+      debugBox(this, gridX, gridZ, 0x00ff00);
       return false;
     }
     return region.food[gridX + "_" + gridZ];
