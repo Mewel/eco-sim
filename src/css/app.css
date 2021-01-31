@@ -12,6 +12,16 @@ canvas {
     text-align: center;
 }
 
+.info .name {
+    font-weight: bold;
+    padding: 2px;
+    border-bottom: 1px solid #5c5c5c;
+}
+
+.info .action {
+    border-top: 1px solid #5c5c5c;
+}
+
 .info .progress {
     height: 15px;
     width: 100px;

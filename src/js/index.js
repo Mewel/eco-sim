@@ -9,7 +9,7 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {MapControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {ModelManager} from "./ModelManager";
 import Config from './config';
-import {getRandomInt} from "./util/util";
+import {debugBox, getRandomInt, radialSearch} from "./util/util";
 
 import {CSS2DRenderer} from "three/examples/jsm/renderers/CSS2DRenderer";
 import {FlatWorld} from "./FlatWorld";
@@ -27,8 +27,9 @@ let camera, controls, scene, renderer, clock, mixers, world, pathFinder, labelRe
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-let bunny, bunnyInfo;
+let bunnyInfo = new BunnyInfo();
 const bunnys = [];
+let bunnyGroup = new THREE.Group();
 let tickTime = 0.5;
 let currentTickTime = 0;
 
@@ -116,43 +117,25 @@ function init() {
     // world
     world.generateTrees(["tree_1", "tree_3"], .1);
     world.buildWaterMap();
+    world.buildRegions();
     world.spawnFood(.01);
+    //world.regions.forEach(region => region.debug(world));
 
     // pathfinder
     pathFinder.updateGrid();
 
     // bunny's
-    bunny = new Bunny();
-    let bunnySpawn = new THREE.Vector2(Math.ceil(world.tiles / 2), Math.ceil(world.tiles / 2));
-    while (world.isWater(bunnySpawn.x, bunnySpawn.y) || world.hasObstacle(bunnySpawn.x, bunnySpawn.y)) {
-      bunnySpawn = new THREE.Vector2(getRandomInt(0, world.tiles), getRandomInt(0, world.tiles));
-    }
-    bunny.model.position.set(bunnySpawn.x * tileSize, 0, bunnySpawn.y * tileSize);
-    console.log(bunnySpawn);
-    scene.add(bunny.model);
-    bunny.model.debugPath(scene);
-    bunnyInfo = new BunnyInfo(bunny);
-
-    // carrot
-
-
-    /*for (let i = 0; i < 500; i++) {
-      const spawnX = getRandomArbitrary(-2000, 2000);
-      const spawnZ = getRandomArbitrary(-2000, 2000);
-      const spawnY = world.getHeight(spawnX, spawnZ);
-      const targetX = getRandomArbitrary(-2000, 2000);
-      const targetZ = getRandomArbitrary(-2000, 2000);
-      const targetY = world.getHeight(targetX, targetZ);
-      if (spawnY < 0 || targetY < 0) {
-        continue;
+    for (let i = 0; i < 50; i++) {
+      let spawn = new THREE.Vector2(getRandomInt(0, world.tiles), getRandomInt(0, world.tiles));
+      while (!world.isWalkable(spawn.x, spawn.y)) {
+        spawn = new THREE.Vector2(getRandomInt(0, world.tiles), getRandomInt(0, world.tiles));
       }
-      let b = new Bunny();
-      b.model.position.set(spawnX, spawnY, spawnZ);
-      scene.add(b.model);
-      bunnys.push(b);
-      b.jumpTo(new THREE.Vector3(targetX, 0, targetZ), world, pathFinder);
-    }*/
-
+      let bunny = new Bunny(i);
+      bunny.model.position.copy(world.toScene(spawn.x, spawn.y));
+      bunnys.push(bunny);
+      bunnyGroup.add(bunny.model);
+    }
+    scene.add(bunnyGroup);
   });
 
   // misc
@@ -177,44 +160,57 @@ function onPointerUp(event) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObject(world.terrain);
-  if (!intersects || intersects.length <= 0) {
-    return;
-  }
-  const point = intersects[0].point;
-  if (event.button === 2) {
-    // teleport bunny on right mouse
-    bunny.model.stop();
-    bunny.model.position.copy(world.centerOnGrid(point.x, point.z));
-    return;
-  }
-  bunny.model.jumpToDebug(world.toGrid(point.x, point.z), world, pathFinder);
-}
 
+  // select bunny
+  if (event.button === 0) {
+    const intersects = raycaster.intersectObjects(bunnyGroup.children, true);
+    if (!intersects || intersects.length <= 0) {
+      return;
+    }
+    const bunnyName = intersects[0].object.parent.name;
+    const bunny = bunnys.find(b => b.name === bunnyName);
+    if (bunny) {
+      bunnyInfo.assignBunny(bunny);
+    }
+  }
+  // debug stuff
+  if (event.button === 2) {
+    const intersects = raycaster.intersectObject(world.terrain);
+    if (!intersects || intersects.length <= 0) {
+      return;
+    }
+    const center = world.toGrid(intersects[0].point.x, intersects[0].point.z);
+    radialSearch(center, world, (scope, target, from, minDistance, oldTarget) => {
+      let distance = center.distanceTo(target);
+      debugBox(scope, target.x, target.y, 0x00ff00);
+      if (target.x >= 0 && target.x < scope.tiles && target.y >= 0 && target.y < scope.tiles &&
+        distance < minDistance && !scope.isWater(target.x, target.y) && !scope.hasObstacle(target.x, target.y) &&
+        scope.hasFood(target.x, target.y)) {
+        return [distance, target];
+      }
+      return [minDistance, oldTarget];
+    });
+  }
+}
 
 function animate() {
   const delta = clock.getDelta();
   currentTickTime += delta;
   if (currentTickTime > tickTime) {
-    if (bunny) {
-      bunny.tick(world, pathFinder);
-    }
+    bunnys.forEach(bunny => bunny.tick(world, pathFinder));
     currentTickTime = 0;
   }
 
   requestAnimationFrame(animate);
   controls.update();
   stats.update();
-  if (bunny) {
-    bunny.model.update();
-  }
-  if (bunnyInfo) {
+  if (bunnyInfo && bunnyInfo.isBunnyAssigned()) {
     bunnyInfo.update(camera);
   }
   if (pathFinder) {
     pathFinder.update();
   }
-  bunnys.forEach(b => b.update());
+  bunnys.forEach(bunny => bunny.model.update());
   render();
 }
 

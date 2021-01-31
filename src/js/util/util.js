@@ -44,7 +44,7 @@ function radialSearch(from, scope, checkFunction) {
     // y-side
     for (let x = 0; x < side.length && minDistance !== 1; x++) {
       for (let y = -offset + 1; y < offset && minDistance !== 1; y++) {
-        let target = new THREE.Vector2(from.x + side[x] * offset, from.y);
+        let target = new THREE.Vector2(from.x + side[x] * offset, from.y + y);
         [minDistance, found] = checkFunction(scope, target, from, minDistance, found);
       }
     }
@@ -53,4 +53,20 @@ function radialSearch(from, scope, checkFunction) {
   return found;
 }
 
-export {getRandomArbitrary, getRandomInt, getMax, getMin, radialSearch}
+function debugBox(world, gridX, gridZ, color) {
+  let mesh = new THREE.Mesh(new THREE.BoxGeometry(5, 50, 5), new THREE.MeshBasicMaterial({color: color}));
+  mesh.position.copy(world.toScene(gridX, gridZ));
+  world.worldGroup.add(mesh);
+}
+
+function debugLine(world, fromGridX, fromGridZ, toGridX, toGridZ, y, color) {
+  const from = world.toScene(fromGridX, fromGridZ);
+  const to = world.toScene(toGridX, toGridZ);
+  from.y = y;
+  to.y = y;
+  const geometry = new THREE.BufferGeometry().setFromPoints([from, to]);
+  let line = new THREE.Line(geometry, new THREE.LineBasicMaterial({color: color}));
+  world.worldGroup.add(line);
+}
+
+export {getRandomArbitrary, getRandomInt, getMax, getMin, radialSearch, debugBox, debugLine}

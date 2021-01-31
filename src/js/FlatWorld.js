@@ -1,9 +1,10 @@
-import {noise} from "./util/perlin";
 import * as THREE from "three";
+import {Vector2} from "three";
+import {noise} from "./util/perlin";
 import {FlatTerrainBuilder} from "./FlatTerrainBuilder";
 import {ModelManager} from "./ModelManager";
 import {getMax, getMin, getRandomArbitrary, getRandomInt, radialSearch} from "./util/util";
-import {Vector2} from "three";
+import {Region} from "./Region";
 
 export class FlatWorld {
 
@@ -22,8 +23,8 @@ export class FlatWorld {
     this.worldGroup.add(terrainBuilder.createWater(tiles, tileSize))
 
     this.obstacles = {};
-    this.food = {};
     this.waterMap = [];
+    this.regions = [];
   }
 
   generateHeight(width, height, size) {
@@ -81,8 +82,8 @@ export class FlatWorld {
         this.waterMap[i] = null;
         continue;
       }
-      if(this.hasWater(grid.x, grid.y)) {
-        this.waterMap[i] = i;
+      if (this.hasWater(grid.x, grid.y)) {
+        this.waterMap[i] = new Vector2(grid.x, grid.y);
         continue;
       }
       this.waterMap[i] = radialSearch(grid, this, this.#updateWaterFound);
@@ -94,16 +95,6 @@ export class FlatWorld {
     if (target.x >= 0 && target.x < scope.tiles && target.y >= 0 && target.y < scope.tiles &&
       distance < minDistance && scope.hasWater(target.x, target.y) &&
       !scope.isWater(target.x, target.y) && !scope.hasObstacle(target.x, target.y)) {
-      return [distance, target];
-    }
-    return [minDistance, oldTarget];
-  }
-
-  #updateFoodFound(scope, target, center, minDistance, oldTarget) {
-    let distance = center.distanceTo(target);
-    if (target.x >= 0 && target.x < scope.tiles && target.y >= 0 && target.y < scope.tiles &&
-      distance < minDistance && !scope.isWater(target.x, target.y) && !scope.hasObstacle(target.x, target.y) &&
-      scope.hasFood(target.x, target.y)) {
       return [distance, target];
     }
     return [minDistance, oldTarget];
@@ -151,14 +142,30 @@ export class FlatWorld {
     return trees;
   }
 
+  buildRegions() {
+    for (let z = 0; z < this.tiles; z++) {
+      for (let x = 0; x < this.tiles; x++) {
+        if (!this.isWater(x, z) && !this.hasObstacle(x, z) && this.getRegion(x, z) === undefined) {
+          let region = new Region();
+          this.regions.push(region);
+          region.build(this, x, z);
+        }
+      }
+    }
+  }
+
+  getRegion(gridX, gridZ) {
+    return this.regions.find(region => region.isPartOf(gridX, gridZ));
+  }
+
   spawnFood(density) {
     this.foodGroup = new THREE.Group();
     for (let z = 0; z < this.tiles; z++) {
       for (let x = 0; x < this.tiles; x++) {
-        if (Math.random() > density || this.isWater(x, z) ||  this.hasObstacle(x, z)) {
+        if (Math.random() > density || this.isWater(x, z) || this.hasObstacle(x, z)) {
           continue;
         }
-        this.food[x + "_" + z] = true;
+        this.getRegion(x, z).food[x + "_" + z] = true;
         let carrot = ModelManager.create("carrot");
         const pos = this.toScene(x, z);
         carrot.position.set(pos.x, -25, pos.z);
@@ -174,10 +181,6 @@ export class FlatWorld {
       this.heightData[gridX + gridZ * this.tiles] < 0;
   }
 
-  hasObstacle(gridX, gridZ) {
-    return this.obstacles[gridX + "_" + gridZ];
-  }
-
   /**
    * Checks if the a tile next to the given tile has water
    *
@@ -189,16 +192,30 @@ export class FlatWorld {
       this.isWater(gridX, gridZ + 1) || this.isWater(gridX, gridZ - 1);
   }
 
-  getClosestWaterTile(gridX, gridZ) {
-    return this.waterMap[gridX + gridZ * this.tiles];
+  hasObstacle(gridX, gridZ) {
+    return this.obstacles[gridX + "_" + gridZ];
   }
 
-  getClosestFoodTile(gridX, gridZ) {
-    return radialSearch(new Vector2(gridX, gridZ), this, this.#updateFoodFound)
+  isWalkable(gridX, gridZ) {
+    return !this.isWater(gridX, gridZ) && !this.hasObstacle(gridX, gridZ);
+  }
+
+  getClosestWaterTile(gridX, gridZ, maxGridDistance) {
+    const closestTile = this.waterMap[gridX + gridZ * this.tiles];
+    return new THREE.Vector2(gridX, gridZ).distanceTo(closestTile) <= maxGridDistance ? closestTile : null;
+  }
+
+  getAvailableFood(gridX, gridZ, maxGridDistance) {
+    return this.getRegion(gridX, gridZ).getFood(this, gridX, gridZ, maxGridDistance);
   }
 
   hasFood(gridX, gridZ) {
-    return this.food[gridX + "_" + gridZ];
+    const region = this.getRegion(gridX, gridZ);
+    if (!region) {
+      console.error("no region for ", gridX, gridZ);
+      return false;
+    }
+    return region.food[gridX + "_" + gridZ];
   }
 
   toGridVector(index) {

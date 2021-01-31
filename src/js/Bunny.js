@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {Bunny3D} from "./Bunny3D";
-import {getRandomInt} from "./util/util";
+import {debugBox, debugLine, getRandomInt} from "./util/util";
 
 export class Bunny {
 
@@ -9,25 +9,29 @@ export class Bunny {
     sleep: Symbol("sleep"),
     drink: Symbol("drink"),
     eat: Symbol("eat"),
-    searchFood: Symbol("searchFood"),
-    searchWater: Symbol("searchWater"),
+    searchFood: Symbol("search food"),
+    searchWater: Symbol("search water"),
   });
 
-  constructor() {
+  constructor(i) {
     this.action = Bunny.Actions.idle;
     this.exhaustion = 0.0;
     this.thirst = 0.0;
     this.hunger = 0.0;
-    this.model = new Bunny3D();
+    this.rangeOfSight = 5.0; // grid range
+    this.name = "bunny #" + i;
+    this.resourceFound = false;
+    this.model = new Bunny3D(this.name);
   }
 
   tick(world, pathFinder) {
     this.update(world);
     const newAction = this.think();
-    if (newAction !== this.action || newAction === Bunny.Actions.idle) {
+    if (newAction !== this.action) {
+      this.resourceFound = false;
       this.action = newAction;
-      this.act(world, pathFinder);
     }
+    this.act(world, pathFinder);
   }
 
   update(world) {
@@ -114,19 +118,47 @@ export class Bunny {
   }
 
   act(world, pathFinder) {
-    if (this.action === Bunny.Actions.searchWater) {
+    if (this.action === Bunny.Actions.searchWater && !this.resourceFound) {
       const grid = world.toGrid(this.model.position.x, this.model.position.z);
-      const closestWaterTile = world.getClosestWaterTile(grid.x, grid.y);
-      this.model.jumpToDebug(closestWaterTile, world, pathFinder);
-    } else if (this.action === Bunny.Actions.searchFood) {
+      const closestWaterTile = world.getClosestWaterTile(grid.x, grid.y, this.rangeOfSight);
+      if (!closestWaterTile) {
+        if (!this.model.isMoving()) {
+          this.jumpRandom(world, pathFinder);
+        }
+        return;
+      }
+      this.resourceFound = true;
+      this.model.jumpTo(closestWaterTile, world, pathFinder).catch(e => {
+        console.log(e);
+        console.error("couldn't find closest water tile for grid", grid.x, grid.y);
+        debugBox(world, grid.x, grid.y, 0x0000ff);
+      });
+    } else if (this.action === Bunny.Actions.searchFood && !this.resourceFound) {
       const grid = world.toGrid(this.model.position.x, this.model.position.z);
-      const closestFoodTile = world.getClosestFoodTile(grid.x, grid.y);
-      this.model.jumpToDebug(closestFoodTile, world, pathFinder);
+      const availableFood = world.getAvailableFood(grid.x, grid.y, this.rangeOfSight);
+      if (availableFood.length === 0) {
+        if (!this.model.isMoving()) {
+          this.jumpRandom(world, pathFinder);
+        }
+        return;
+      }
+      this.resourceFound = true;
+      this.model.jumpTo(availableFood[0].tile, world, pathFinder).catch(e => {
+        console.log(e);
+        console.error("couldn't find closest food tile for grid", grid.x, grid.y);
+        debugBox(world, grid.x, grid.y, 0xff0000);
+        debugBox(world, availableFood.x, availableFood.y, 0xffff00);
+        debugLine(world, grid.x, grid.y, availableFood.x, availableFood.y, 10, 0xff0000);
+      });
     } else if (this.action === Bunny.Actions.idle && !this.model.isMoving() && Math.random() < .75) {
-      const offset = new THREE.Vector2(getRandomInt(-5, 5), getRandomInt(-5, 5));
-      const pos = world.toGrid(this.model.position.x, this.model.position.z);
-      this.model.jumpToDebug(pos.add(offset), world, pathFinder);
+      this.jumpRandom(world, pathFinder);
     }
+  }
+
+  jumpRandom(world, pathFinder) {
+    const offset = new THREE.Vector2(getRandomInt(-this.rangeOfSight, this.rangeOfSight), getRandomInt(-this.rangeOfSight, this.rangeOfSight));
+    const pos = world.toGrid(this.model.position.x, this.model.position.z);
+    this.model.jumpToIgnore(pos.add(offset), world, pathFinder);
   }
 
   die(cause) {

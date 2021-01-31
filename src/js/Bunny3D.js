@@ -6,8 +6,9 @@ export class Bunny3D extends THREE.Group {
   /**
    * Creates a new bunny instance. Requires that ModelManager is fully loaded.
    */
-  constructor() {
+  constructor(name) {
     super();
+    this.name = name;
     const bunny = ModelManager.create("rabbit");
     bunny.castShadow = true;
     bunny.receiveShadow = true;
@@ -25,6 +26,11 @@ export class Bunny3D extends THREE.Group {
     const from = world.toGrid(this.position.x, this.position.z)
     return pathFinder.getCurve(from.x, from.y, to.x, to.y).then((curve) => {
       this.follow(world, curve);
+    });
+  }
+
+  jumpToIgnore(to, world, pathFinder) {
+    return this.jumpTo(to, world, pathFinder).catch(ignore => {
     });
   }
 

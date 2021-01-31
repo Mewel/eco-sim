@@ -1,12 +1,12 @@
 import {CSS2DObject} from "three/examples/jsm/renderers/CSS2DRenderer";
+import {Bunny} from "./Bunny";
 
 export class BunnyInfo {
 
-  constructor(bunny) {
-    this.bunny = bunny;
+  constructor() {
     this.content = this.create();
     this.infoObject = new CSS2DObject(this.content);
-    this.bunny.model.add(this.infoObject);
+    this.nameElement = this.content.getElementsByClassName("name")[0];
     this.actionElement = this.content.getElementsByClassName("action")[0];
     this.exhaustionProgressElement = this.content.getElementsByClassName("exhaustion")[0].getElementsByClassName("progress-bar")[0];
     this.thirstProgressElement = this.content.getElementsByClassName("thirst")[0].getElementsByClassName("progress-bar")[0];
@@ -17,6 +17,7 @@ export class BunnyInfo {
     let template = document.createElement('template');
     template.innerHTML = `
       <div class="info">
+        <div class="name"></div>
         <div class="exhaustion progress">
           <span style="width: 0%" class="progress-bar"></span>
           <span class="progress-text">exhaustion</span>
@@ -36,12 +37,35 @@ export class BunnyInfo {
   }
 
   update(camera) {
-    this.infoObject.position.set(0, 20 + camera.position.y / 8, 0);
+    this.infoObject.position.set(0, 20 + camera.position.y / 5, 0);
 
+    this.nameElement.textContent = this.bunny.name;
     this.actionElement.textContent = this.bunny.action.description;
+    if (this.bunny.action === Bunny.Actions.searchFood) {
+      this.actionElement.textContent = this.bunny.resourceFound ? "food found" : "search food";
+    } else if (this.bunny.action === Bunny.Actions.searchWater) {
+      this.actionElement.textContent = this.bunny.resourceFound ? "water found" : "search water";
+    }
     this.thirstProgressElement.style.width = (this.bunny.thirst * 100) + "%";
     this.hungerProgressElement.style.width = (this.bunny.hunger * 100) + "%";
     this.exhaustionProgressElement.style.width = (this.bunny.exhaustion * 100) + "%";
+  }
+
+  assignBunny(bunny) {
+    this.unassignBunny();
+    this.bunny = bunny;
+    this.bunny.model.add(this.infoObject);
+  }
+
+  unassignBunny() {
+    if (this.bunny) {
+      this.bunny.model.remove(this.infoObject);
+    }
+    this.bunny = null;
+  }
+
+  isBunnyAssigned() {
+    return this.bunny !== undefined && this.bunny !== null;
   }
 
 }
