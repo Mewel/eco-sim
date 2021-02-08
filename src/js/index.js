@@ -3,32 +3,35 @@ import './../css/app.css';
 
 // js imports
 import * as THREE from 'three';
+import * as TWEEN from "@tweenjs/tween.js";
 
 import {GUI} from 'three/examples/jsm/libs/dat.gui.module';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {MapControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {ModelManager} from "./ModelManager";
 import {Settings} from "./Settings";
-import {debugBox, getRandomInt, radialSearch} from "./util/util";
 
 import {CSS2DRenderer} from "three/examples/jsm/renderers/CSS2DRenderer";
-import {FlatWorld} from "./FlatWorld";
-import {Bunny} from "./Bunny";
+import {World} from "./World";
 import {PathFinder} from "./PathFinder";
 import {BunnyInfo} from "./BunnyInfo";
+import {EcoInfo} from "./EcoInfo";
+import {AnimalHandler} from "./AnimalHandler";
 
-let camera, controls, scene, renderer, clock, mixers, world, pathFinder, labelRenderer, bunnyInfo;
+let camera, controls, scene, renderer, animationClock, tickClock, mixers, world, labelRenderer, bunnyInfo;
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-const bunnys = [];
-let bunnyGroup = new THREE.Group();
 let currentTickTime = 0;
 
-const stats = new Stats();
-stats.domElement.style.position = 'absolute';
-stats.domElement.style.top = '0px';
-document.body.appendChild(stats.domElement);
+const stats = {
+  tick: 0
+};
+
+const fps = new Stats();
+fps.domElement.style.position = 'absolute';
+fps.domElement.style.top = '0px';
+document.body.appendChild(fps.domElement);
 window.addEventListener('pointerup', onPointerUp);
 
 init();
@@ -88,7 +91,8 @@ function init() {
   controls.update();
 
   // animation
-  clock = new THREE.Clock();
+  animationClock = new THREE.Clock();
+  tickClock = new THREE.Clock();
   mixers = [];
 
   // world
@@ -96,7 +100,7 @@ function init() {
   let tileSize = 20;
 
   //world = new World(tiles, tileSize);
-  world = new FlatWorld(tiles, tileSize);
+  world = new World(tiles, tileSize);
   scene.add(world.worldGroup);
 
 
@@ -104,7 +108,7 @@ function init() {
   scene.add(axesHelper);
 
   // util stuff
-  pathFinder = new PathFinder(world);
+  PathFinder.init(world);
   bunnyInfo = new BunnyInfo(world);
 
   ModelManager.init().then(() => {
@@ -113,33 +117,25 @@ function init() {
     world.buildWaterMap();
     world.buildRegions();
     world.spawnFood(.01);
+
+    AnimalHandler.init();
+    AnimalHandler.spawnBunnies(world, 100);
+    scene.add(AnimalHandler.group);
     //world.regions.forEach(region => region.debug(world));
 
     // pathfinder
-    pathFinder.updateGrid();
-
-    // bunny's
-    for (let i = 0; i < 50; i++) {
-      let spawn = new THREE.Vector2(getRandomInt(0, world.tiles), getRandomInt(0, world.tiles));
-      while (!world.isWalkable(spawn.x, spawn.y)) {
-        spawn = new THREE.Vector2(getRandomInt(0, world.tiles), getRandomInt(0, world.tiles));
-      }
-      let bunny = new Bunny(i);
-      bunny.model.position.copy(world.toScene(spawn.x, spawn.y));
-      bunnys.push(bunny);
-      bunnyGroup.add(bunny.model);
-    }
-    scene.add(bunnyGroup);
+    PathFinder.updateGrid();
   });
 
   // misc
   window.addEventListener('resize', onWindowResize, false);
 
   const gui = new GUI();
-  gui.add(Settings, "speed", 1, 100, 1);
+  gui.add(Settings, "speed", 0, 100, 1);
 }
 
 animate();
+tick();
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -148,7 +144,6 @@ function onWindowResize() {
   labelRenderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-
 function onPointerUp(event) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -156,54 +151,48 @@ function onPointerUp(event) {
 
   // select bunny
   if (event.button === 0) {
-    const intersects = raycaster.intersectObjects(bunnyGroup.children, true);
-    if (!intersects || intersects.length <= 0) {
+    const intersections = raycaster.intersectObjects(AnimalHandler.group.children, true);
+    if (!intersections || intersections.length <= 0) {
       return;
     }
-    const bunnyName = intersects[0].object.parent.name;
-    const bunny = bunnys.find(b => b.name === bunnyName);
+    const arr = intersections[0].object.userData.array;
+    const instanceId = intersections[0].instanceId;
+    const bunnyName = arr[instanceId].bunny.name;
+    const bunny = world.getBunny(bunnyName);
     if (bunny) {
       bunnyInfo.assignBunny(bunny);
+      EcoInfo.assignAnimal(bunny);
+      EcoInfo.show();
+      EcoInfo.showTab(".eco-info-animal");
     }
-  }
-  // debug stuff
-  if (event.button === 2) {
-    const intersects = raycaster.intersectObject(world.terrain);
-    if (!intersects || intersects.length <= 0) {
-      return;
-    }
-    const center = world.toGrid(intersects[0].point.x, intersects[0].point.z);
-    radialSearch(center, world, (scope, target, from, minDistance, oldTarget) => {
-      let distance = center.distanceTo(target);
-      debugBox(scope, target.x, target.y, 0x00ff00);
-      if (target.x >= 0 && target.x < scope.tiles && target.y >= 0 && target.y < scope.tiles &&
-        distance < minDistance && !scope.isWater(target.x, target.y) && !scope.hasObstacle(target.x, target.y) &&
-        scope.hasFood(target.x, target.y)) {
-        return [distance, target];
-      }
-      return [minDistance, oldTarget];
-    });
   }
 }
 
-function animate() {
-  const delta = clock.getDelta();
+function tick() {
+  const delta = tickClock.getDelta();
   currentTickTime += delta;
   if (currentTickTime > (1 / Settings.speed)) {
-    bunnys.forEach(bunny => bunny.tick(world, pathFinder));
+    stats.tick++;
     currentTickTime = 0;
+    world.tick();
   }
+  setTimeout(tick, 1);
+}
 
+function animate(time) {
   requestAnimationFrame(animate);
+  const delta = animationClock.getDelta();
   controls.update();
-  stats.update();
-  if (bunnyInfo && bunnyInfo.isBunnyAssigned()) {
-    bunnyInfo.update(camera);
+  fps.update();
+  EcoInfo.update(stats);
+  PathFinder.update();
+  TWEEN.update(time);
+  if (AnimalHandler.initialized && Settings.speed > 0) {
+    AnimalHandler.update(delta);
   }
-  if (pathFinder) {
-    pathFinder.update();
+  if(bunnyInfo) {
+    bunnyInfo.update();
   }
-  bunnys.forEach(bunny => bunny.model.update());
   render();
 }
 

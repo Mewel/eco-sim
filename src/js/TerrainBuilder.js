@@ -2,7 +2,7 @@ import * as THREE from "three";
 import {BufferGeometryUtils} from 'three/examples/jsm/utils/BufferGeometryUtils';
 import {Water} from "three/examples/jsm/objects/Water2";
 
-export class FlatTerrainBuilder {
+export class TerrainBuilder {
 
   terrain(tiles, tileSize, heightData) {
     const geometries = [];

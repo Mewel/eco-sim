@@ -1,13 +1,14 @@
 import * as THREE from "three";
 import {Vector2} from "three";
 import {noise} from "./util/perlin";
-import {FlatTerrainBuilder} from "./FlatTerrainBuilder";
+import {TerrainBuilder} from "./TerrainBuilder";
 import {ModelManager} from "./ModelManager";
 import {debugBox, getMax, getMin, getRandomArbitrary, getRandomInt, radialSearch} from "./util/util";
 import {Region} from "./Region";
 import {Settings} from "./Settings";
+import {AnimalHandler} from "./AnimalHandler";
 
-export class FlatWorld {
+export class World {
 
   constructor(tiles, tileSize) {
     this.tiles = tiles;
@@ -16,7 +17,7 @@ export class FlatWorld {
     this.worldGroup = new THREE.Group();
     this.heightData = this.normalize(this.generateHeight(tiles, tiles, tileSize));
 
-    let terrainBuilder = new FlatTerrainBuilder();
+    let terrainBuilder = new TerrainBuilder();
     this.terrain = terrainBuilder.terrain(this.tiles, this.tileSize, this.heightData);
 
     this.worldGroup = new THREE.Group();
@@ -32,7 +33,7 @@ export class FlatWorld {
       if (key === "speed") {
         scope.water.material.uniforms['flowDirection'] = {
           type: 'v2',
-          value: new Vector2(.2 * value, .2 * value)
+          value: new Vector2(.1 * value, .1 * value)
         }
       }
     });
@@ -176,15 +177,56 @@ export class FlatWorld {
         if (Math.random() > density || this.isWater(x, z) || this.hasObstacle(x, z)) {
           continue;
         }
-        this.getRegion(x, z).food[x + "_" + z] = true;
         let carrot = ModelManager.create("carrot");
         const pos = this.toScene(x, z);
-        carrot.position.set(pos.x, -25, pos.z);
-        carrot.scale.set(30, 30, 30);
+        carrot.position.set(pos.x, 0, pos.z);
         this.foodGroup.add(carrot);
+        this.getRegion(x, z).addFood(x, z, carrot);
       }
     }
     this.worldGroup.add(this.foodGroup);
+  }
+
+  spawnBabies(babies, mother) {
+    const position = mother.model.getPosition();
+    babies.forEach(baby => {
+      let tile = this.toGrid(position.x, position.z);
+      baby.model.setPosition(position.x, 0, position.z);
+      baby.region = mother.region;
+      AnimalHandler.addBunny(baby);
+    });
+  }
+
+  getBunny(name) {
+    for (let i = 0; i < this.regions.length; i++) {
+      let result = this.regions[i].animals.find(b => b.name === name);
+      if (result) {
+        return result;
+      }
+    }
+    return null;
+  }
+
+  getAnimals(gridX, gridZ, maxGridDistance) {
+    let region = this.getRegion(gridX, gridZ);
+    if (!region) {
+      // sometimes the bunny hops over a water or obstacle tile
+      if (!this.isWater(gridX, gridZ) && !this.hasObstacle(gridX, gridZ)) {
+        console.error("no region for ", gridX, gridZ);
+        debugBox(this, gridX, gridZ, 0x00ff00);
+      }
+      return [];
+    }
+    const d = maxGridDistance * this.tileSize;
+    let v = new THREE.Vector3(gridX * this.tileSize, 0, gridZ * this.tileSize);
+    return region.animals.filter(animal => {
+      return v.distanceTo(animal.model.getPosition()) <= d;
+    });
+  }
+
+  removeAnimal(animal) {
+    animal.region.removeAnimal(animal);
+    AnimalHandler.remove(animal);
   }
 
   isWater(gridX, gridZ) {
@@ -225,32 +267,17 @@ export class FlatWorld {
     return new THREE.Vector2(gridX, gridZ).distanceTo(closestTile) <= maxGridDistance ? closestTile : null;
   }
 
-  getAvailableFood(gridX, gridZ, maxGridDistance) {
-    const region = this.getRegion(gridX, gridZ);
-    if (!region) {
-      if (this.isWater(gridX, gridZ) || this.hasObstacle(gridX, gridZ)) {
-        // sometimes the bunny hops over a water or obstacle tile when searching for food.
-        return [];
-      }
-      console.error("no region for ", gridX, gridZ);
-      debugBox(this, gridX, gridZ, 0x00ff00);
-      return false;
-    }
-    return region.getFood(this, gridX, gridZ, maxGridDistance);
-  }
-
   hasFood(gridX, gridZ) {
     const region = this.getRegion(gridX, gridZ);
     if (!region) {
-      if (this.isWater(gridX, gridZ) || this.hasObstacle(gridX, gridZ)) {
-        // sometimes the bunny hops over a water or obstacle tile when searching for food.
-        return false;
+      // sometimes the bunny hops over a water or obstacle tile when searching for food.
+      if (!this.isWater(gridX, gridZ) && !this.hasObstacle(gridX, gridZ)) {
+        console.error("no region for ", gridX, gridZ);
+        debugBox(this, gridX, gridZ, 0x00ff00);
       }
-      console.error("no region for ", gridX, gridZ);
-      debugBox(this, gridX, gridZ, 0x00ff00);
       return false;
     }
-    return region.food[gridX + "_" + gridZ];
+    return region.hasFood(gridX, gridZ);
   }
 
   toGridVector(index) {
@@ -270,6 +297,10 @@ export class FlatWorld {
   centerOnGrid(sceneX, sceneZ) {
     const grid = this.toGrid(sceneX, sceneZ);
     return this.toScene(grid.x, grid.y, "center");
+  }
+
+  tick() {
+    this.regions.forEach(region => region.tick(this));
   }
 
 }

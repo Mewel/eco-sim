@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import {debugBox} from "./util/util";
+import {Food} from "./Food";
 
 export class Region {
 
   constructor() {
-    this.food = {};
+    this.food = new Map();
     this.tiles = {};
     this.animals = [];
   }
@@ -43,20 +44,29 @@ export class Region {
     return this.tiles[gridX + "_" + gridZ];
   }
 
-  getFood(world, gridX, gridZ, maxGridDistance) {
+  addFood(x, z, model) {
+    this.food.set(x + "_" + z, new Food(x, z, model));
+  }
+
+  getFood(gridX, gridZ, maxGridDistance) {
     const fromTile = new THREE.Vector2(gridX, gridZ);
-    const food = [];
-    Object.keys(this.food).forEach(key => {
-      const x = parseInt(key.split("_")[0]);
-      const z = parseInt(key.split("_")[1]);
-      const foodTile = new THREE.Vector2(x, z);
-      const distance = fromTile.distanceTo(foodTile);
-      if (distance <= maxGridDistance) {
-        food.push({distance, tile: foodTile});
+    const result = [];
+    this.food.forEach(food => {
+      const distance = fromTile.distanceTo(food.tile);
+      if (distance <= maxGridDistance && food.value >= .1) {
+        result.push({distance, food: food});
       }
-    });
-    food.sort((f1, f2) => f1.distance - f2.distance);
-    return food;
+    })
+    if (result.length > 0) {
+      result.sort((f1, f2) => (f1.distance / f1.food.value) - (f2.distance / f2.food.value));
+      return result[0].food;
+    } else {
+      return null;
+    }
+  }
+
+  hasFood(x, z) {
+    return this.food.has(x + "_" + z);
   }
 
   debug(world) {
@@ -66,6 +76,20 @@ export class Region {
       const z = parseInt(key.split("_")[1]);
       debugBox(world, x, z, color)
     });
+  }
+
+  removeAnimal(animal) {
+    // swap remove -> fast and we don't care about the order
+    let index = this.animals.indexOf(animal);
+    if (index >= 0) {
+      this.animals[index] = this.animals[this.animals.length - 1];
+      this.animals.pop();
+    }
+  }
+
+  tick(world) {
+    this.food.forEach(food => food.tick(world));
+    this.animals.forEach(animal => animal.tick(world));
   }
 
 }

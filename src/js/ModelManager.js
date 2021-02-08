@@ -13,7 +13,8 @@ const ModelManager = {
     const loadingManager = new THREE.LoadingManager();
     return Promise.all([
       this.loadTrees(loadingManager),
-      this.loadGLB("rabbit", loadingManager),
+      this.loadGLB("bunny_male", loadingManager),
+      this.loadGLB("bunny_female", loadingManager),
       this.loadGLB("carrot", loadingManager)
     ]).then(() => {
       scope.readyFlag = true;

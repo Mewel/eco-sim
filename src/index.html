@@ -1,12 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8">
     <title><%= htmlWebpackPlugin.options.title %></title>
-  </head>
+</head>
 
-  <body>
-    <% if (htmlWebpackPlugin.options.env === 'dev') { %>
-    <% } %>
-  </body>
+<body>
+<% if (htmlWebpackPlugin.options.env === 'dev') { %>
+<% } %>
+
+<div id="eco-info-button">i</div>
+<div id="eco-info">
+    <div class="eco-info-tabs">
+        <div class="eco-info-tab eco-info-tab-stats eco-info-tab-active" data-target=".eco-info-stats">Stats</div>
+        <div class="eco-info-tab eco-info-tab-object" data-target=".eco-info-animal">Object</div>
+    </div>
+    <div class="eco-info-tab-content eco-info-stats">
+        <div class="eco-tick">
+        </div>
+    </div>
+    <div class="eco-info-tab-content eco-info-animal" style="display: none;">
+        <div class="eco-name">
+        </div>
+        <div class="eco-animal-content">
+            <div class="eco-animal-state">
+                <div class="eco-animal-dead">
+                </div>
+                <div>
+                    <span>Action: </span>
+                    <span class="eco-animal-action"></span>
+                </div>
+                <div class="eco-animal-exhaustion eco-progress">
+                    <span style="width: 0" class="eco-progress-bar"></span>
+                    <span class="eco-progress-text">exhaustion</span>
+                </div>
+                <div class="eco-animal-thirst eco-progress">
+                    <span style="width: 0" class="eco-progress-bar"></span>
+                    <span class="eco-progress-text">thirst</span>
+                </div>
+                <div class="eco-animal-hunger eco-progress">
+                    <span style="width: 0" class="eco-progress-bar"></span>
+                    <span class="eco-progress-text">hunger</span>
+                </div>
+                <div class="eco-animal-reproductionUrge eco-progress">
+                    <span style="width: 0" class="eco-progress-bar"></span>
+                    <span class="eco-progress-text">reproduction urge</span>
+                </div>
+                <div class="eco-animal-pregnancy eco-progress">
+                    <span style="width: 0" class="eco-progress-bar"></span>
+                    <span class="eco-progress-text">pregnancy</span>
+                </div>
+            </div>
+            <div class="eco-animal-traits">
+                <div class="eco-property eco-animal-sex">
+                    <div class="eco-property-key">Sex</div>
+                    <div class="eco-property-value"></div>
+                </div>
+                <div class="eco-property eco-animal-age">
+                    <div class="eco-property-key">Age</div>
+                    <div class="eco-property-value"></div>
+                </div>
+                <div class="eco-property eco-animal-speed">
+                    <div class="eco-property-key">Speed</div>
+                    <div class="eco-property-value"></div>
+                </div>
+                <div class="eco-property eco-animal-sight">
+                    <div class="eco-property-key">Range of Sight</div>
+                    <div class="eco-property-value"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</body>
 </html>

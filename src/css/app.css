@@ -46,3 +46,129 @@ canvas {
     width: 100px;
     text-align: center;
 }
+
+#eco-info-button {
+    position: absolute;
+    background: #000;
+    color: #fff;
+    bottom: 15px;
+    right: 15px;
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    text-align: center;
+    transition-duration: 0.1s;
+    font: 1.5rem 'Lucida Grande', sans-serif;
+    line-height: 30px;
+    z-index: 1;
+}
+
+#eco-info-button:hover {
+    background: #222;
+    cursor: pointer;
+}
+
+#eco-info {
+    position: absolute;
+    background: black;
+    color: white;
+    bottom: 25px;
+    right: 25px;
+    display: none;
+    height: 200px;
+    width: 400px;
+    font: .9rem 'Lucida Grande', sans-serif;
+}
+
+#eco-info .eco-info-tab-content {
+    flex-grow: 1;
+    display: flex;
+    flex-flow: column;
+}
+
+#eco-info .eco-info-tabs {
+    position: absolute;
+    bottom: -25px;
+    display: flex;
+}
+
+#eco-info .eco-info-tabs .eco-info-tab {
+    padding: 5px 10px;
+    cursor: pointer;
+    background: #333;
+}
+
+#eco-info .eco-info-tabs .eco-info-tab.eco-info-tab-active {
+    background: #000;
+}
+
+#eco-info .eco-tick {
+    text-align: center;
+}
+
+#eco-info .eco-name {
+    text-align: center;
+    font-weight: bold;
+    border-bottom: 1px solid #333;
+    padding: 4px;
+}
+
+#eco-info .eco-animal-content {
+    display: flex;
+    flex-grow: 1;
+    justify-content: space-between;
+}
+
+#eco-info .eco-animal-state {
+    width: 50%;
+    border-right: 1px solid #333;
+    padding: 4px;
+}
+
+#eco-info .eco-animal-traits {
+    width: 50%;
+    padding: 4px;
+}
+
+#eco-info .eco-progress {
+    height: 15px;
+    position: relative;
+    background-color: #222222;
+    margin: 2px;
+}
+
+#eco-info .eco-progress > .eco-progress-bar {
+    display: block;
+    height: 100%;
+    background-color: rgb(43, 134, 194);
+}
+
+#eco-info .eco-progress > .eco-progress-text {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 1px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+#eco-info .eco-property {
+    display: flex;
+}
+
+#eco-info .eco-property-key {
+    width: 50%;
+}
+
+#eco-info .eco-property-value {
+    width: 50%;
+    text-align: right;
+}
+
+#eco-info .eco-animal-dead {
+    color: #ff7878;
+    padding: 5px;
+    text-align: center;
+}

@@ -1,39 +1,36 @@
 import {js} from "easystarjs";
 import * as THREE from "three";
 
-export class PathFinder {
+const PathFinder = {
 
-  /**
-   * Creates a new pathfinder
-   *
-   * @param world the world object
-   */
-  constructor(world) {
+  init(world) {
     this.world = world;
-
     this.buildTerrainGrid();
-
     this.easyStar = new js();
     this.easyStar.setAcceptableTiles([0]);
     this.easyStar.enableDiagonals();
     this.easyStar.enableCornerCutting();
+    this.easyStar.enableSync();
     this.updateGrid();
-  }
+  },
 
-  find(fromX, fromZ, toX, toZ) {
+  find(fromX, fromZ, toX, toZ, onCreated = null) {
     return new Promise((resolve, reject) => {
-      this.easyStar.findPath(fromX, fromZ, toX, toZ, (path) => {
+      const id = this.easyStar.findPath(fromX, fromZ, toX, toZ, (path) => {
         if (path === null) {
           reject("no path found")
         } else {
           resolve(path);
         }
       });
+      if (id && onCreated) {
+        onCreated(id);
+      }
     });
-  }
+  },
 
-  getCurve(fromGridX, fromGridZ, toGridX, toGridZ) {
-    return this.find(fromGridX, fromGridZ, toGridX, toGridZ).then(path => {
+  getCurve(fromGridX, fromGridZ, toGridX, toGridZ, onCreated = null) {
+    return this.find(fromGridX, fromGridZ, toGridX, toGridZ, onCreated).then(path => {
       let curvePoints = [this.world.toScene(fromGridX, fromGridZ)];
 
       for (let i = 1; i < path.length - 1; i++) {
@@ -57,7 +54,7 @@ export class PathFinder {
       curvePoints.push(this.world.toScene(toGridX, toGridZ));
       return new THREE.CatmullRomCurve3(curvePoints);
     });
-  }
+  },
 
   getGrid() {
     const grid = [];
@@ -71,7 +68,7 @@ export class PathFinder {
       }
     }
     return grid;
-  }
+  },
 
   buildTerrainGrid() {
     this.terrainGrid = [];
@@ -83,14 +80,16 @@ export class PathFinder {
       }
     }
     return this;
-  }
+  },
 
   updateGrid() {
     this.easyStar.setGrid(this.getGrid());
-  }
+  },
 
   update() {
     this.easyStar.calculate();
   }
 
 }
+
+export {PathFinder}

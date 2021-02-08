@@ -1,119 +1,134 @@
+import * as TWEEN from "@tweenjs/tween.js";
 import * as THREE from "three";
-import {ModelManager} from "./ModelManager";
+
 import {Settings} from "./Settings";
+import {PathFinder} from "./PathFinder";
 
-export class Bunny3D extends THREE.Group {
+export class Bunny3D {
 
-  /**
-   * Creates a new bunny instance. Requires that ModelManager is fully loaded.
-   */
-  constructor(name) {
-    super();
-    this.name = name;
-    const bunny = ModelManager.create("rabbit");
-    bunny.castShadow = true;
-    bunny.receiveShadow = true;
-    bunny.scale.set(.5, .5, .5);
-    this.add(bunny);
-    this.mixer = new THREE.AnimationMixer(bunny);
-    this.jumpClip = ModelManager.getClip("rabbit", "jump");
-    this.jumpAction = this.mixer.clipAction(this.jumpClip);
-    this.jumpAction.stop();
-    this.jumpUnitsPerTick = 50;
-    this.clock = new THREE.Clock();
-  }
+  static JUMP_ANIMATION = {y: [20, 0]};
+  static JUMP_DISTANCE = 20; // tile size is 20
 
-  jumpTo(to, world, pathFinder) {
-    if(this.died) {
-      console.log("jumpTo");
-    }
-    const from = world.toGrid(this.position.x, this.position.z)
-    return pathFinder.getCurve(from.x, from.y, to.x, to.y).then((curve) => {
-      this.follow(world, curve);
-    });
-  }
-
-  jumpToIgnore(to, world, pathFinder) {
-    return this.jumpTo(to, world, pathFinder).catch(ignore => {
-    });
-  }
-
-  jumpToDebug(to, world, pathFinder) {
-    return this.jumpTo(to, world, pathFinder).then(() => {
-      if (!this.showPath) {
-        return;
+  constructor(bunny) {
+    this.bunny = bunny;
+    this.index = null;
+    this.matrix = new THREE.Matrix4();
+    this.rescale();
+    this.distanceTraveled = null
+    this.curve = null;
+    this.stopJump = false;
+    this.jumpPosition = {y: 0};
+    this.jumpTween = new TWEEN.Tween(this.jumpPosition).interpolation(TWEEN.Interpolation.Bezier);
+    this.jumpTween.onRepeat(() => {
+      if (this.stopJump) {
+        this.jumpTween.stop();
       }
-      if (this.pathHelper) {
-        this.scene.remove(this.pathHelper);
-      }
-      const points = this.targetCurve.getPoints(200);
-      points.forEach(p => p.y += 10);
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      const material = new THREE.LineBasicMaterial({color: 0xff0000});
-      this.pathHelper = new THREE.Line(geometry, material);
-      this.scene.add(this.pathHelper);
-    }).catch(ignore => {
     });
   }
 
-  follow(world, curve) {
-    if(this.died) {
-      console.log("follow");
+  jumpTo(to, world) {
+    const from = world.toGrid(this.matrix.elements[12], this.matrix.elements[14]);
+    // check if we are already at the target
+    if (to.equals(from)) {
+      this.stop(true);
+      return Promise.resolve();
     }
-    this.targetCurve = curve;
-    this.totalDistance = curve.getLength();
-    this.distanceTraveled = 0;
-    this.jumpAction.reset();
-    const jumpTimes = Math.ceil(this.totalDistance / (this.jumpUnitsPerTick / 2)) * Settings.speed;
-    this.jumpAction.timeScale = jumpTimes / (this.totalDistance / this.jumpUnitsPerTick);
-    this.jumpAction.play();
+    // get curve and jump to when finished
+    return PathFinder.getCurve(from.x, from.y, to.x, to.y).then((curve) => {
+      this.#follow(curve);
+    });
   }
 
-  debugPath(scene) {
-    this.scene = scene;
-    this.showPath = true;
+  jumpToIgnore(to, world) {
+    return this.jumpTo(to, world).catch(ignore => {
+    });
+  }
+
+  jump(n) {
+    this.jumpPosition.y = 0;
+    this.stopJump = false;
+    this.jumpTween.repeat(n).start();
+  }
+
+  #follow(curve) {
+    this.curve = curve;
+    this.jumpTween.stop();
+    this.jumpPosition.y = 0;
+    this.curveLength = this.curve.getLength();
+    const distance = this.curveLength / Math.ceil(this.curveLength / Bunny3D.JUMP_DISTANCE);
+    const duration = (1000 / (this.bunny.traits.speed / distance)) / Settings.speed;
+    this.jumpTween.to(Bunny3D.JUMP_ANIMATION, duration).repeat(Infinity).start();
+    this.stopJump = false;
+    this.distanceTraveled = 0.0;
   }
 
   stop() {
+    this.jumpTween.stop();
+    this.jumpPosition.y = 0;
     this.distanceTraveled = null;
-    this.targetCurve = null;
-    this.mixer.stopAllAction();
-    this.jumpAction.stop();
+    this.stopJump = true;
   }
 
   isMoving() {
-    return this.distanceTraveled !== null && this.distanceTraveled !== undefined;
+    return this.distanceTraveled !== null;
+  }
+
+  isJumping() {
+    return this.jumpTween.isPlaying();
   }
 
   die() {
     this.stop();
-    this.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2);
-
-    this.died = true;
+    this.matrix.elements[13] = 0;
+    let p = this.getPosition();
+    this.matrix.makeRotationAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+    this.rescale();
+    this.setPosition(p.x, p.y, p.z);
   }
 
-  update() {
-    const delta = this.clock.getDelta();
-    this.mixer.update(delta);
-    if (!this.isMoving()) {
-      return;
+  update(delta) {
+    this.matrix.elements[13] = this.jumpPosition.y;
+    if (this.distanceTraveled !== null) {
+      const speed = (1 / this.curveLength) * delta * this.bunny.traits.speed * Settings.speed;
+      this.distanceTraveled = Math.min(1., this.distanceTraveled + speed);
+      const newPosition = this.curve.getPointAt(this.distanceTraveled);
+      this.matrix.elements[12] = newPosition.x;
+      this.matrix.elements[14] = newPosition.z;
+      if (this.distanceTraveled + speed <= 1) {
+        const target = this.curve.getPointAt(this.distanceTraveled + speed);
+        target.y = this.matrix.elements[13];
+        this.lookAt(target);
+      }
     }
     if (this.distanceTraveled >= 1) {
-      this.distanceTraveled = null;
-      this.jumpAction.stop();
-      return;
+      this.stop(false);
     }
-    const speed = (1 / this.totalDistance) * delta * this.jumpUnitsPerTick * Settings.speed;
-    this.distanceTraveled = Math.min(1., this.distanceTraveled + speed);
-    const newPosition = this.targetCurve.getPointAt(this.distanceTraveled);
-    const tangent = this.targetCurve.getTangent(this.distanceTraveled);
-    this.position.copy(newPosition);
-    if (this.distanceTraveled + speed <= 1) {
-      this.rotation.x = tangent.x;
-      this.rotation.y = tangent.y;
-      this.rotation.z = tangent.z;
-      this.lookAt(this.targetCurve.getPointAt(this.distanceTraveled + speed));
-    }
+    return this.matrix;
+  }
+
+  setPosition(x, y, z) {
+    this.matrix.elements[12] = x;
+    this.matrix.elements[13] = y;
+    this.matrix.elements[14] = z;
+  }
+
+  getPosition(yZero = true) {
+    return new THREE.Vector3(this.matrix.elements[12], yZero ? 0 : this.matrix.elements[13], this.matrix.elements[14]);
+  }
+
+  lookAt(target) {
+    this.matrix.lookAt(target, this.getPosition(false), new THREE.Vector3(0, 1, 0));
+    this.rescale();
+  }
+
+  rescale() {
+    const scale = this.getAgeScale();
+    this.matrix.scale(new THREE.Vector3(scale, scale, scale));
+  }
+
+  getAgeScale() {
+    const maxScale = .5;
+    return this.bunny.isAdult() ? maxScale : Math.min(1., (this.bunny.age / (this.bunny.traits.lifespan / 10)) + .2) * maxScale;
   }
 
 }
