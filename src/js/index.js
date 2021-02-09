@@ -131,7 +131,7 @@ function init() {
   window.addEventListener('resize', onWindowResize, false);
 
   const gui = new GUI();
-  gui.add(Settings, "speed", 0, 100, 1);
+  gui.add(Settings, "speed", 0, 1000, 1);
 }
 
 animate();

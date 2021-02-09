@@ -62,11 +62,11 @@ const AnimalHandler = {
 
   addBunny(bunny) {
     if (bunny.traits.sex) {
-      this.maleBunniesMesh.addInstance(bunny.model.matrix);
+      this.maleBunniesMesh.addInstance(bunny.model.object3D.matrix);
       this.maleBunnies.push(bunny.model);
       bunny.model.index = this.maleBunniesMesh.count - 1;
     } else {
-      this.femaleBunniesMesh.addInstance(bunny.model.matrix);
+      this.femaleBunniesMesh.addInstance(bunny.model.object3D.matrix);
       this.femaleBunnies.push(bunny.model);
       bunny.model.index = this.femaleBunniesMesh.count - 1;
     }

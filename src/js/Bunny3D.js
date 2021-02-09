@@ -12,8 +12,7 @@ export class Bunny3D {
   constructor(bunny) {
     this.bunny = bunny;
     this.index = null;
-    this.matrix = new THREE.Matrix4();
-    this.rescale();
+    this.object3D = new THREE.Object3D();
     this.distanceTraveled = null
     this.curve = null;
     this.stopJump = false;
@@ -27,7 +26,7 @@ export class Bunny3D {
   }
 
   jumpTo(to, world) {
-    const from = world.toGrid(this.matrix.elements[12], this.matrix.elements[14]);
+    const from = world.toGrid(this.object3D.position.x, this.object3D.position.z);
     // check if we are already at the target
     if (to.equals(from)) {
       this.stop(true);
@@ -79,55 +78,51 @@ export class Bunny3D {
 
   die() {
     this.stop();
-    this.matrix.elements[13] = 0;
-    let p = this.getPosition();
-    this.matrix.makeRotationAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2);
-    this.rescale();
-    this.setPosition(p.x, p.y, p.z);
+    this.object3D.position.y = 0;
+    this.object3D.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI / 2);
   }
 
   update(delta) {
-    this.matrix.elements[13] = this.jumpPosition.y;
+    this.object3D.position.y = this.jumpPosition.y;
     if (this.distanceTraveled !== null) {
       const speed = (1 / this.curveLength) * delta * this.bunny.traits.speed * Settings.speed;
       this.distanceTraveled = Math.min(1., this.distanceTraveled + speed);
       const newPosition = this.curve.getPointAt(this.distanceTraveled);
-      this.matrix.elements[12] = newPosition.x;
-      this.matrix.elements[14] = newPosition.z;
+      this.object3D.position.x = newPosition.x;
+      this.object3D.position.z = newPosition.z;
       if (this.distanceTraveled + speed <= 1) {
         const target = this.curve.getPointAt(this.distanceTraveled + speed);
-        target.y = this.matrix.elements[13];
+        target.y = this.object3D.position.y;
         this.lookAt(target);
       }
+      if (this.distanceTraveled >= 1) {
+        this.stop(false);
+      }
     }
-    if (this.distanceTraveled >= 1) {
-      this.stop(false);
-    }
-    return this.matrix;
+    let scale = this.getScale();
+    this.object3D.scale.set(scale, scale, scale);
+    this.object3D.updateMatrix();
+    return this.object3D.matrix;
   }
 
   setPosition(x, y, z) {
-    this.matrix.elements[12] = x;
-    this.matrix.elements[13] = y;
-    this.matrix.elements[14] = z;
+    this.object3D.position.set(x, y, z);
   }
 
   getPosition(yZero = true) {
-    return new THREE.Vector3(this.matrix.elements[12], yZero ? 0 : this.matrix.elements[13], this.matrix.elements[14]);
+    if (yZero) {
+      return new THREE.Vector3(this.object3D.position.x, 0, this.object3D.position.z);
+    } else {
+      return this.object3D.position;
+    }
   }
 
   lookAt(target) {
-    this.matrix.lookAt(target, this.getPosition(false), new THREE.Vector3(0, 1, 0));
-    this.rescale();
+    this.object3D.lookAt(target);
   }
 
-  rescale() {
-    const scale = this.getAgeScale();
-    this.matrix.scale(new THREE.Vector3(scale, scale, scale));
-  }
-
-  getAgeScale() {
-    const maxScale = .5;
+  getScale() {
+    const maxScale = this.bunny.traits.sex ? .5 : .45;
     return this.bunny.isAdult() ? maxScale : Math.min(1., (this.bunny.age / (this.bunny.traits.lifespan / 10)) + .2) * maxScale;
   }
 
