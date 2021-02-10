@@ -102,6 +102,12 @@ canvas {
     background: #000;
 }
 
+#eco-info .eco-info-stats-header {
+    display: flex;
+    justify-content: space-around;
+    padding: 2px;
+}
+
 #eco-info .eco-tick {
     text-align: center;
 }

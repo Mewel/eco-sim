@@ -32,7 +32,7 @@ const AnimalHandler = {
         spawn = new THREE.Vector2(getRandomInt(0, world.tiles), getRandomInt(0, world.tiles));
       }
       let bunny = this.createBunny(world, spawn);
-      bunny.age = getRandomInt(0, bunny.traits.lifespan); // randomize starting age
+      bunny.age = getRandomInt(0, bunny.traits.lifespan - 1000); // randomize starting age
     }
     /*let spawn;
     for (let i = 0; i < 1; i++) {

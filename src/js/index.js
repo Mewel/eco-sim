@@ -17,8 +17,10 @@ import {PathFinder} from "./PathFinder";
 import {BunnyInfo} from "./BunnyInfo";
 import {EcoInfo} from "./EcoInfo";
 import {AnimalHandler} from "./AnimalHandler";
+import {ChartController} from "./ChartController";
 
-let camera, controls, scene, renderer, animationClock, tickClock, mixers, world, labelRenderer, bunnyInfo;
+let camera, controls, scene, renderer, animationClock, tickClock, mixers, world, labelRenderer, bunnyInfo,
+  chartController;
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -103,10 +105,6 @@ function init() {
   world = new World(tiles, tileSize);
   scene.add(world.worldGroup);
 
-
-  const axesHelper = new THREE.AxesHelper(2000);
-  scene.add(axesHelper);
-
   // util stuff
   PathFinder.init(world);
   bunnyInfo = new BunnyInfo(world);
@@ -128,6 +126,7 @@ function init() {
   });
 
   // misc
+  chartController = new ChartController();
   window.addEventListener('resize', onWindowResize, false);
 
   const gui = new GUI();
@@ -172,6 +171,7 @@ function tick() {
   const delta = tickClock.getDelta();
   currentTickTime += delta;
   if (currentTickTime > (1 / Settings.speed)) {
+    chartController.track(stats.tick);
     stats.tick++;
     currentTickTime = 0;
     world.tick();
@@ -190,7 +190,7 @@ function animate(time) {
   if (AnimalHandler.initialized && Settings.speed > 0) {
     AnimalHandler.update(delta);
   }
-  if(bunnyInfo) {
+  if (bunnyInfo) {
     bunnyInfo.update();
   }
   render();
