@@ -46,7 +46,9 @@ export class Bunny3D {
   jump(n) {
     this.jumpPosition.y = 0;
     this.stopJump = false;
-    this.jumpTween.repeat(n).start();
+    if(Settings.speed < 50) {
+      this.jumpTween.repeat(n).start();
+    }
   }
 
   #follow(curve) {
@@ -90,10 +92,12 @@ export class Bunny3D {
       const newPosition = this.curve.getPointAt(this.distanceTraveled);
       this.object3D.position.x = newPosition.x;
       this.object3D.position.z = newPosition.z;
-      if (this.distanceTraveled + speed <= 1) {
-        const target = this.curve.getPointAt(this.distanceTraveled + speed);
-        target.y = this.object3D.position.y;
-        this.lookAt(target);
+      if(Settings.speed < 50) {
+        if (this.distanceTraveled + speed <= 1) {
+          const target = this.curve.getPointAt(this.distanceTraveled + speed);
+          target.y = this.object3D.position.y;
+          this.lookAt(target);
+        }
       }
       if (this.distanceTraveled >= 1) {
         this.stop(false);

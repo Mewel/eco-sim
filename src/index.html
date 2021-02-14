@@ -9,7 +9,92 @@
 <% if (htmlWebpackPlugin.options.env === 'dev') { %>
 <% } %>
 
-<div id="eco-info-button">i</div>
+<div id="eco-setup-overlay">
+</div>
+<div id="eco-setup-container">
+    <div id="eco-setup">
+        <div class="eco-setup-tabs">
+            <div class="eco-setup-tab eco-setup-intro-tab eco-setup-tab-active" data-target=".eco-setup-intro">Intro
+            </div>
+            <div class="eco-setup-tab eco-setup-world-tab" data-target=".eco-setup-world">World Settings</div>
+        </div>
+        <div class="eco-setup-tab-content eco-setup-intro">
+            <p>Welcome to <span>Eco-Sim</span>!</p>
+            <p>This is an <span>ecological simulator</span> about <span>bunnies</span> living on a tropical island. The
+                bunnies have only a few desires. They want to <span>eat</span> (carrots), <span>drink</span> (water),
+                <span>sleep</span> and <span>copulate</span> from time to time.
+            </p>
+            <p>Each bunny has <span>genetic characteristics</span> (such as speed and sight). Every newborn baby bunny
+                inherits these traits from either the mother or the father. Genes additionally have the possibility to
+                <span>mutate</span>.
+            </p>
+            <p>You can follow a bunny by clicking on it. There are also statistics where you can track the success of
+                the entire population.</p>
+            <p>To fasten up the simulation just increase the speed using the handle on the top right!</p>
+        </div>
+        <div class="eco-setup-tab-content eco-setup-world" style="display: none;">
+            <div class="eco-setup-header">World</div>
+            <div class="eco-setup-row">
+                <div class="eco-setup-row-name">Tiles</div>
+                <div class="eco-setup-row-input" data-target="world.tiles" data-min="20"
+                     data-max="400"></div>
+                <div class="eco-setup-row-description">The world consists of tiles. This value determines the number
+                    for each axis. The default value is 200 which would result in a 200 by 200 grid. Be aware that
+                    larger worlds require more processing power. [20-400]
+                </div>
+            </div>
+            <div class="eco-setup-row">
+                <div class="eco-setup-row-name">Land/Water</div>
+                <div class="eco-setup-row-input" data-target="world.waterLandRatio" data-min="0"
+                     data-max="100" data-type="percentage"></div>
+                <div class="eco-setup-row-description">The ratio between water and land. The higher the value, the more
+                    land mass is generated. [0-100]
+                </div>
+            </div>
+            <div class="eco-setup-row">
+                <div class="eco-setup-row-name">Tree Density</div>
+                <div class="eco-setup-row-input" data-target="world.treeDensity" data-min="0"
+                     data-max="100" data-type="percentage"></div>
+                <div class="eco-setup-row-description">The percentage of trees. [0-100]</div>
+            </div>
+            <div class="eco-setup-row">
+                <div class="eco-setup-row-name">Food Density</div>
+                <div class="eco-setup-row-input" data-target="world.foodDensity" data-min="0"
+                     data-max="100" data-type="percentage"></div>
+                <div class="eco-setup-row-description">The percentage of food. [0-100]</div>
+            </div>
+            <div class="eco-setup-header">Bunnies</div>
+            <div class="eco-setup-row">
+                <div class="eco-setup-row-name">Genesis</div>
+                <div class="eco-setup-row-input" data-target="world.bunnies" data-min="0"
+                     data-max="1000"></div>
+                <div class="eco-setup-row-description">The number of bunnies created by the FSM.</div>
+            </div>
+            <div class="eco-setup-row">
+                <div class="eco-setup-row-name">Mutation Chance</div>
+                <div class="eco-setup-row-input" data-target="genetics.mutationChance" data-min="0"
+                     data-max="100" data-type="percentage"></div>
+                <div class="eco-setup-row-description">The chance that a gene mutation occurs. [0-100]</div>
+            </div>
+            <div class="eco-setup-row">
+                <div class="eco-setup-row-name">Mutation Amount</div>
+                <div class="eco-setup-row-input" data-target="genetics.mutationAmount" data-min="0"
+                     data-max="100" data-type="percentage"></div>
+                <div class="eco-setup-row-description">Specifies the maximum percentage of change when a mutation
+                    occurs.
+                    0 = no change. Note that the resulting value is normally distributed (big changes are more
+                    unlikely). [0-100]
+                </div>
+            </div>
+        </div>
+        <div class="eco-setup-start">
+            <button id="eco-setup-start-button">Start</button>
+        </div>
+    </div>
+</div>
+
+<div id="eco-audio-button" class="eco-bottom-button"></div>
+<div id="eco-info-button" class="eco-bottom-button">i</div>
 <div id="eco-info">
     <div class="eco-info-tabs">
         <div class="eco-info-tab eco-info-tab-stats eco-info-tab-active" data-target=".eco-info-stats">Stats</div>
@@ -41,9 +126,9 @@
                     <span>Action: </span>
                     <span class="eco-animal-action"></span>
                 </div>
-                <div class="eco-animal-exhaustion eco-progress">
+                <div class="eco-animal-fatigue eco-progress">
                     <span style="width: 0" class="eco-progress-bar"></span>
-                    <span class="eco-progress-text">exhaustion</span>
+                    <span class="eco-progress-text">fatigue</span>
                 </div>
                 <div class="eco-animal-thirst eco-progress">
                     <span style="width: 0" class="eco-progress-bar"></span>

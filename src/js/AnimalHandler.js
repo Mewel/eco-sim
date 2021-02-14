@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import {ModelManager} from "./ModelManager";
+import {AssetManager} from "./AssetManager";
 import {DynamicInstancedMesh} from "./DynamicInstancedMesh";
 import {getRandomInt} from "./util/util";
 import {Bunny} from "./Bunny";
@@ -14,8 +14,8 @@ const AnimalHandler = {
     this.maleBunnies = [];
     this.femaleBunnies = [];
 
-    const bunnyMale = ModelManager.create("bunny_male");
-    const bunnyFemale = ModelManager.create("bunny_female");
+    const bunnyMale = AssetManager.create("bunny_male");
+    const bunnyFemale = AssetManager.create("bunny_female");
     this.maleBunniesMesh = new DynamicInstancedMesh(bunnyMale.geometry, bunnyMale.material, 0, 100000);
     this.femaleBunniesMesh = new DynamicInstancedMesh(bunnyFemale.geometry, bunnyFemale.material, 0, 100000);
     this.group.add(this.maleBunniesMesh);
@@ -54,7 +54,8 @@ const AnimalHandler = {
   createBunny(world, spawn) {
     const region = world.getRegion(spawn.x, spawn.y);
     let bunny = new Bunny();
-    bunny.model.setPosition(spawn.x * world.tileSize, 0, spawn.y * world.tileSize);
+    let pos = world.toScene(spawn.x, spawn.y);
+    bunny.model.setPosition(pos.x, pos.y, pos.z);
     bunny.region = region;
     this.addBunny(bunny);
     return bunny;

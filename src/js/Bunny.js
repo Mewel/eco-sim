@@ -1,6 +1,16 @@
 import * as THREE from 'three';
-import {debugBox, debugLine, DIAGONAL_DISTANCE, getClosestNeighborTile, getRandomInt} from "./util/util";
+import {
+  debugBox,
+  debugLine,
+  DIAGONAL_DISTANCE,
+  getClosestNeighborTile,
+  getRandomArbitrary,
+  getRandomBoxMuller,
+  getRandomInt
+} from "./util/util";
 import {Bunny3D} from "./Bunny3D";
+import {Statistics} from "./Statistics";
+import {Settings} from "./Settings";
 
 export class Bunny {
 
@@ -21,9 +31,9 @@ export class Bunny {
 
   static getDefaultTraits() {
     return {
-      speed: 40,
+      speed: getRandomInt(35, 45),
       sex: Math.random() > .5,
-      rangeOfSight: 5.0,
+      rangeOfSight: parseFloat(getRandomArbitrary(4.5, 5.5)),
       lifespan: getRandomInt(2500, 3500)
     }
   }
@@ -32,7 +42,7 @@ export class Bunny {
     this.traits = traits ? traits : Bunny.getDefaultTraits();
 
     // state
-    this.exhaustion = 0.0;
+    this.fatigue = 0.0;
     this.thirst = 0.0;
     this.hunger = 0.0;
     this.reproductionUrge = 0.0;
@@ -75,13 +85,13 @@ export class Bunny {
       return true;
     }
     this.age++;
-    this.thirst += .01;
-    this.hunger += .005;
-    this.exhaustion += .002;
+    this.thirst += .005;
+    this.hunger += .001 + this.traits.speed * .00004 + this.traits.rangeOfSight * .0005;
+    this.fatigue += .002;
     if (this.pregnancy !== null) {
       this.pregnancy += .01;
     } else if (this.isAdult()) {
-      this.reproductionUrge += .003;
+      this.reproductionUrge += this.traits.sex ? .1 : .003;
     }
 
     if (this.action === Bunny.Actions.searchWater) {
@@ -103,7 +113,7 @@ export class Bunny {
     }
 
     if (this.action === Bunny.Actions.sleep) {
-      this.exhaustion -= .02;
+      this.fatigue -= .02;
       this.thirst -= .005;
       this.hunger -= .0025;
     } else if (this.action === Bunny.Actions.drink) {
@@ -117,7 +127,7 @@ export class Bunny {
         this.action = Bunny.Actions.searchFood;
       }
     } else if (this.action === Bunny.Actions.mate) {
-      this.reproductionUrge -= .1;
+      this.reproductionUrge -= this.traits.sex ? .2 : .103;
       if (this.reproductionUrge <= 0) {
         this.reproductionUrge = 0;
         if (!this.traits.sex) {
@@ -127,14 +137,13 @@ export class Bunny {
     }
 
     this.thirst = this.thirst <= 0 ? 0 : this.thirst;
-    this.exhaustion = this.exhaustion <= 0 ? 0 : this.exhaustion;
+    this.fatigue = this.fatigue <= 0 ? 0 : this.fatigue;
+    this.fatigue = this.fatigue >= 1 ? 1 : this.fatigue;
     this.hunger = this.hunger <= 0 ? 0 : this.hunger;
 
     // stuff to die from
     if (this.thirst > 1) {
       return this.die("thirst");
-    } else if (this.exhaustion > 1) {
-      return this.die("exhaustion");
     } else if (this.hunger > 1) {
       return this.die("hunger");
     } else if (this.age >= this.traits.lifespan) {
@@ -164,7 +173,7 @@ export class Bunny {
     // doing something already
     const busy = (this.action === Bunny.Actions.eat && this.hunger > 0) ||
       (this.action === Bunny.Actions.drink && this.thirst > 0) ||
-      (this.action === Bunny.Actions.sleep && this.exhaustion > 0) ||
+      (this.action === Bunny.Actions.sleep && this.fatigue > 0) ||
       (this.action === Bunny.Actions.mate && this.reproductionUrge > 0);
 
     const needs = [];
@@ -180,9 +189,9 @@ export class Bunny {
         importance: this.hunger
       });
     }
-    if ((!busy && this.exhaustion > .7) || this.exhaustion > .99) {
+    if ((!busy && this.fatigue > .7) || this.fatigue > .99) {
       needs.push({
-        action: Bunny.Actions.sleep, importance: this.exhaustion
+        action: Bunny.Actions.sleep, importance: this.fatigue
       });
     }
     if (!busy && this.reproductionUrge >= 1) {
@@ -203,9 +212,7 @@ export class Bunny {
       const tile = this.getCurrentTile(world);
       const closestWaterTile = world.getClosestWaterTile(tile.x, tile.y, this.traits.rangeOfSight);
       if (!closestWaterTile) {
-        if (!this.model.isMoving()) {
-          this.jumpRandom(world);
-        }
+        this.jumpRandom(world);
         return;
       }
       this.resourceFound = closestWaterTile;
@@ -218,9 +225,7 @@ export class Bunny {
       const tile = this.getCurrentTile(world);
       const food = this.region.getFood(tile.x, tile.y, this.traits.rangeOfSight);
       if (food === null) {
-        if (!this.model.isMoving()) {
-          this.jumpRandom(world);
-        }
+        this.jumpRandom(world);
         return;
       }
       this.resourceFound = food;
@@ -232,40 +237,55 @@ export class Bunny {
         debugLine(world, tile.x, tile.y, food.x, food.y, 10, 0xff0000);
       });
     } else if (this.action === Bunny.Actions.searchMate && !this.resourceFound) {
+      // only males search actively for females. females just jump around waiting for the males to approach.
+      if (!this.traits.sex) {
+        this.jumpRandom(world);
+        return;
+      }
+      // male here
       const tile = this.getCurrentTile(world);
-      let mates = world.getAnimals(tile.x, tile.y, this.traits.rangeOfSight).filter(animal => {
+      let femaleMatingPartner = world.getAnimals(tile.x, tile.y, this.traits.rangeOfSight).filter(animal => {
         return animal.traits.sex !== this.traits.sex && !animal.isDead() && animal.reproductionUrge >= .5 &&
           animal.action === Bunny.Actions.searchMate && animal.resourceFound === null;
       });
-      if (mates.length === 0) {
-        if (!this.model.isMoving()) {
-          this.jumpRandom(world);
-        }
+      if (femaleMatingPartner.length === 0) {
+        this.jumpRandom(world);
       } else {
-        const mate = mates[0]; // should be good enough right?
-        this.resourceFound = this.lastPartner = mate;
-        mate.resourceFound = mate.lastPartner = this;
-        mate.model.stop();
-        const mateTile = mate.getCurrentTile(world);
-        // jump to mate's neighbor tile
-        const targetTile = getClosestNeighborTile(world, tile.x, tile.y, mateTile.x, mateTile.y);
-        this.model.jumpTo(targetTile, world).catch(e => {
-          console.log(e);
-          console.error("couldn't find closest tile to mate ", mateTile.x, mateTile.y);
-          debugBox(world, tile.x, tile.y, 0xff0000);
-          debugBox(world, targetTile.x, targetTile.y, 0xffff00);
-          debugLine(world, tile.x, tile.y, targetTile.x, targetTile.y, 10, 0xff0000);
-        });
+        for (let i = 0; i < femaleMatingPartner.length; i++) {
+          let femaleMate = femaleMatingPartner[i];
+          if (femaleMate.isValidMatingPartner(this)) {
+            this.resourceFound = this.lastPartner = femaleMate;
+            femaleMate.resourceFound = femaleMate.lastPartner = this;
+            femaleMate.model.stop();
+            const mateTile = femaleMate.getCurrentTile(world);
+            // jump to females neighbor tile
+            const targetTile = getClosestNeighborTile(world, tile.x, tile.y, mateTile.x, mateTile.y);
+            this.model.jumpTo(targetTile, world).catch(e => {
+              console.log(e);
+              console.error("couldn't find closest tile to mate ", mateTile.x, mateTile.y);
+              debugBox(world, tile.x, tile.y, 0xff0000);
+              debugBox(world, targetTile.x, targetTile.y, 0xffff00);
+              debugLine(world, tile.x, tile.y, targetTile.x, targetTile.y, 10, 0xff0000);
+            });
+            return;
+          } else {
+            // you've got rejected :(
+            // TODO
+          }
+        }
       }
     } else if (this.action === Bunny.Actions.mate && !this.model.isJumping()) {
       this.model.lookAt(this.lastPartner.model.getPosition());
       this.model.jump(10);
-    } else if (this.action === Bunny.Actions.idle && !this.model.isMoving() && Math.random() < .75) {
+    } else if (this.action === Bunny.Actions.idle && Math.random() < .75) {
       this.jumpRandom(world);
     }
   }
 
   jumpRandom(world) {
+    if (this.model.isMoving()) {
+      return;
+    }
     const offset = new THREE.Vector2(
       getRandomInt(0, this.traits.rangeOfSight) * (Math.random() > .5 ? 1 : -1),
       getRandomInt(0, this.traits.rangeOfSight) * (Math.random() > .5 ? 1 : -1)
@@ -288,6 +308,11 @@ export class Bunny {
       causeOfDeath: causeOfDeath
     };
     this.model.die();
+    Statistics.data["cause of death (" + causeOfDeath + ")"]++;
+    return true;
+  }
+
+  isValidMatingPartner(male) {
     return true;
   }
 
@@ -299,7 +324,13 @@ export class Bunny {
         sex: Math.random() > .5
       };
       Bunny.Traits.forEach(trait => {
+        // inherit
         babyTraits[trait] = Math.random() > .5 ? this.traits[trait] : this.lastPartner.traits[trait];
+        // mutate
+        if (Math.random() <= Settings.genetics.mutationChance) {
+          babyTraits[trait] += babyTraits[trait] * Settings.genetics.mutationAmount * ((getRandomBoxMuller() * 2) - 1);
+        }
+        babyTraits["lifespan"] = Math.round(babyTraits["lifespan"]);
       });
       babies.push(new Bunny(babyTraits, this.generation + 1));
     }

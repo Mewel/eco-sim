@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
-const ModelManager = {
+const AssetManager = {
 
   model: {},
   animation: {},
+  audioBuffer: {},
   readyFlag: false,
   resolveAwaiters: [],
 
@@ -15,7 +16,8 @@ const ModelManager = {
       this.loadTrees(loadingManager),
       this.loadGLB("bunny_male", loadingManager),
       this.loadGLB("bunny_female", loadingManager),
-      this.loadGLB("carrot", loadingManager)
+      this.loadGLB("carrot", loadingManager),
+      this.loadAudio("water.mp3", loadingManager)
     ]).then(() => {
       scope.readyFlag = true;
       scope.resolveAwaiters.forEach(resolve => resolve());
@@ -58,6 +60,17 @@ const ModelManager = {
     });
   },
 
+  loadAudio(name, loadingManager) {
+    return new Promise((resolve) => {
+      const scope = this;
+      const loader = new THREE.AudioLoader(loadingManager);
+      loader.load("audio/" + name, function (buffer) {
+        scope.audioBuffer[name] = buffer;
+        resolve();
+      });
+    });
+  },
+
   applyBottomCenter(mesh) {
     mesh.geometry.computeBoundingBox();
     mesh.geometry.center();
@@ -68,7 +81,7 @@ const ModelManager = {
     return this.model[modelName].clone();
   },
 
-  createGeometry(modelName) {
+  geometry(modelName) {
     return this.model[modelName].geometry.clone();
   },
 
@@ -76,13 +89,19 @@ const ModelManager = {
     return this.model[modelName].material;
   },
 
-  getClip(modelName, clipName) {
+  clip(modelName, clipName) {
     return THREE.AnimationClip.findByName(this.animation[modelName], clipName);
+  },
+
+  audio(name, listener) {
+    const audio = new THREE.Audio(listener);
+    audio.setBuffer(this.audioBuffer[name]);
+    return audio;
   }
 
 }
 
-export {ModelManager};
+export {AssetManager};
 
 
 /*

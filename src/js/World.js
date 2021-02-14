@@ -2,11 +2,12 @@ import * as THREE from "three";
 import {Vector2} from "three";
 import {noise} from "./util/perlin";
 import {TerrainBuilder} from "./TerrainBuilder";
-import {ModelManager} from "./ModelManager";
+import {AssetManager} from "./AssetManager";
 import {debugBox, getMax, getMin, getRandomArbitrary, getRandomInt, radialSearch} from "./util/util";
 import {Region} from "./Region";
 import {Settings} from "./Settings";
 import {AnimalHandler} from "./AnimalHandler";
+import {DynamicInstancedMesh} from "./DynamicInstancedMesh";
 
 export class World {
 
@@ -15,7 +16,7 @@ export class World {
     this.tileSize = tileSize;
 
     this.worldGroup = new THREE.Group();
-    this.heightData = this.normalize(this.generateHeight(tiles, tiles, tileSize));
+    this.heightData = this.normalize(this.generateHeight(tiles, tiles, tileSize, Settings.world.waterLandRatio));
 
     let terrainBuilder = new TerrainBuilder();
     this.terrain = terrainBuilder.terrain(this.tiles, this.tileSize, this.heightData);
@@ -33,13 +34,13 @@ export class World {
       if (key === "speed") {
         scope.water.material.uniforms['flowDirection'] = {
           type: 'v2',
-          value: new Vector2(.1 * value, .1 * value)
+          value: new Vector2(.1 + value * .01, .1 + value * .01)
         }
       }
     });
   }
 
-  generateHeight(width, height, size) {
+  generateHeight(width, height, size, waterLandRatio = .5) {
     const worldNoise = noise();
     worldNoise.seed(Math.random());
     const borderNoise = noise();
@@ -61,7 +62,7 @@ export class World {
 
         // world
         const world = worldNoise.simplex2(x / (size * 2), y / (size * 2)); // -1 -> 1
-        const amplify = (Math.min(border, world) * 100) + 20;
+        const amplify = (Math.min(border, world) * 100) + (40 * waterLandRatio);
         data[x + y * height] = amplify + (Math.abs(cN) * 50);
       }
     }
@@ -142,7 +143,7 @@ export class World {
     }
     // instantiated
     Object.keys(treeGeometries).forEach(key => {
-      const mesh = new THREE.InstancedMesh(ModelManager.createGeometry(key), ModelManager.material(key), treeGeometries[key].length);
+      const mesh = new THREE.InstancedMesh(AssetManager.geometry(key), AssetManager.material(key), treeGeometries[key].length);
       for (let i = 0; i < treeGeometries[key].length; i++) {
         mesh.setMatrixAt(i, treeGeometries[key][i]);
       }
@@ -171,20 +172,23 @@ export class World {
   }
 
   spawnFood(density) {
-    this.foodGroup = new THREE.Group();
+    const spawns = [];
+    const carrot = AssetManager.create("carrot");
     for (let z = 0; z < this.tiles; z++) {
       for (let x = 0; x < this.tiles; x++) {
         if (Math.random() > density || this.isWater(x, z) || this.hasObstacle(x, z)) {
           continue;
         }
-        let carrot = ModelManager.create("carrot");
-        const pos = this.toScene(x, z);
-        carrot.position.set(pos.x, 0, pos.z);
-        this.foodGroup.add(carrot);
-        this.getRegion(x, z).addFood(x, z, carrot);
+        spawns.push(new THREE.Vector2(x, z));
       }
     }
-    this.worldGroup.add(this.foodGroup);
+    this.foodMesh = new DynamicInstancedMesh(carrot.geometry, carrot.material, spawns.length);
+    for (let i = 0; i < spawns.length; i++) {
+      const spawn = spawns[i];
+      const food = this.getRegion(spawn.x, spawn.y).addFood(this, i, spawn.x, spawn.y);
+      this.foodMesh.setMatrixAt(i, food.model.matrix);
+    }
+    this.worldGroup.add(this.foodMesh);
   }
 
   spawnBabies(babies, mother) {
@@ -292,11 +296,6 @@ export class World {
 
   toGrid(sceneX, sceneZ) {
     return new THREE.Vector2(Math.floor(sceneX / this.tileSize), Math.floor(sceneZ / this.tileSize));
-  }
-
-  centerOnGrid(sceneX, sceneZ) {
-    const grid = this.toGrid(sceneX, sceneZ);
-    return this.toScene(grid.x, grid.y, "center");
   }
 
   tick() {

@@ -44,8 +44,14 @@ export class Region {
     return this.tiles[gridX + "_" + gridZ];
   }
 
-  addFood(x, z, model) {
-    this.food.set(x + "_" + z, new Food(x, z, model));
+  addFood(world, index, x, z) {
+    const food = new Food(index, x, z);
+    const scenePosition = world.toScene(x, z);
+    food.model.position.copy(scenePosition);
+    food.updateSize();
+    food.model.updateMatrix();
+    this.food.set(x + "_" + z, food);
+    return food;
   }
 
   getFood(gridX, gridZ, maxGridDistance) {

@@ -8,19 +8,18 @@ import * as TWEEN from "@tweenjs/tween.js";
 import {GUI} from 'three/examples/jsm/libs/dat.gui.module';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {MapControls} from 'three/examples/jsm/controls/OrbitControls.js';
-import {ModelManager} from "./ModelManager";
 import {Settings} from "./Settings";
-
-import {CSS2DRenderer} from "three/examples/jsm/renderers/CSS2DRenderer";
+import {AssetManager} from "./AssetManager";
 import {World} from "./World";
 import {PathFinder} from "./PathFinder";
 import {BunnyInfo} from "./BunnyInfo";
 import {EcoInfo} from "./EcoInfo";
 import {AnimalHandler} from "./AnimalHandler";
-import {ChartController} from "./ChartController";
+import {Statistics} from "./Statistics";
+import {EcoSetup} from "./EcoSetup";
 
-let camera, controls, scene, renderer, animationClock, tickClock, mixers, world, labelRenderer, bunnyInfo,
-  chartController;
+let camera, controls, scene, renderer, animationClock, tickClock, mixers, world, bunnyInfo, audioListener, fps;
+let waveAudio, windAudio;
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -30,22 +29,32 @@ const stats = {
   tick: 0
 };
 
-const fps = new Stats();
-fps.domElement.style.position = 'absolute';
-fps.domElement.style.top = '0px';
-document.body.appendChild(fps.domElement);
-window.addEventListener('pointerup', onPointerUp);
-
 init();
 
 function init() {
+  // animation
+  animationClock = new THREE.Clock();
+  tickClock = new THREE.Clock();
+  mixers = [];
 
+  // init assets
+  AssetManager.init();
+
+  // statistic
+  Statistics.init();
+  Statistics.select("bunnies (sum)", 0);
+
+  EcoSetup.onStart().then(() => {
+    create();
+  });
+}
+
+function create() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcccccc);
-  //scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
 
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
-  camera.position.set(2000, 1700, 4000);
+  camera.position.set(Settings.world.tiles * 10, Settings.world.tiles * 14, Settings.world.tiles * 20);
 
   // renderer
   renderer = new THREE.WebGLRenderer({antialias: true});
@@ -55,92 +64,95 @@ function init() {
   renderer.shadowMap.enabled = true;
   document.body.appendChild(renderer.domElement);
 
-  // label renderer
-  labelRenderer = new CSS2DRenderer();
-  labelRenderer.setSize(window.innerWidth, window.innerHeight);
-  labelRenderer.domElement.style.position = 'absolute';
-  labelRenderer.domElement.style.top = '0px';
-  labelRenderer.domElement.style.pointerEvents = 'none';
-  document.body.appendChild(labelRenderer.domElement);
-
   // light
   const light = new THREE.AmbientLight(0x888888); // soft white light
   scene.add(light);
   const dirLight = new THREE.DirectionalLight(0x777777);
-  dirLight.position.set(4000, 6000, 4000);
+  const lightDistance = Settings.world.tiles * 20;
+  dirLight.position.set(lightDistance, lightDistance * 1.5, lightDistance);
   dirLight.castShadow = true;
   dirLight.shadow.camera.near = 1;
-  dirLight.shadow.camera.far = 10000;
-  dirLight.shadow.camera.right = 4000;
-  dirLight.shadow.camera.left = -4000;
-  dirLight.shadow.camera.top = 4000;
-  dirLight.shadow.camera.bottom = -4000;
+  dirLight.shadow.camera.far = lightDistance * 3;
+  dirLight.shadow.camera.right = lightDistance;
+  dirLight.shadow.camera.left = -lightDistance;
+  dirLight.shadow.camera.top = lightDistance;
+  dirLight.shadow.camera.bottom = -lightDistance;
   dirLight.shadow.mapSize.width = 2048;
   dirLight.shadow.mapSize.height = 2048;
   scene.add(dirLight);
 
   // controls
   controls = new MapControls(camera, renderer.domElement);
-  //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
-  controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+  controls.addEventListener("change", onCameraChange);
+  controls.enableDamping = true;
   controls.dampingFactor = .08;
   controls.minDistance = 50;
   controls.maxDistance = 5000;
   controls.maxPolarAngle = Math.PI / 2;
   controls.keys = {LEFT: 65, UP: 87, RIGHT: 68, BOTTOM: 83};
   controls.keyPanSpeed = 20;
-  controls.target.set(2000, 0, 2700);
+  controls.target.set(Settings.world.tiles * 10, 0, Settings.world.tiles * 13);
   controls.update();
 
-  // animation
-  animationClock = new THREE.Clock();
-  tickClock = new THREE.Clock();
-  mixers = [];
+  // audio
+  audioListener = new THREE.AudioListener();
+  audioListener.setMasterVolume(Settings.audio ? 1. : 0);
+  camera.add(audioListener);
+  Settings.onChange.push((key, value) => {
+    if (key === "audio") {
+      audioListener.setMasterVolume(value ? 1. : 0.);
+    }
+  });
 
-  // world
-  let tiles = 200;
-  let tileSize = 20;
+  // misc
+  window.addEventListener('resize', onWindowResize, false);
 
-  //world = new World(tiles, tileSize);
+  let tiles = Settings.world.tiles;
+  let tileSize = Settings.world.tileSize;
+
   world = new World(tiles, tileSize);
   scene.add(world.worldGroup);
 
   // util stuff
   PathFinder.init(world);
   bunnyInfo = new BunnyInfo(world);
+  fps = createFPS();
+  window.addEventListener("pointerup", onPointerUp);
 
-  ModelManager.init().then(() => {
+  // speed gui
+  const gui = new GUI();
+  gui.add(Settings, "speed", 0, 1000, 1);
+
+  AssetManager.ready().then(() => {
     // world
-    world.generateTrees(["tree_1", "tree_3"], .1);
+    world.generateTrees(["tree_3"], Settings.world.treeDensity);
     world.buildWaterMap();
     world.buildRegions();
-    world.spawnFood(.01);
+    world.spawnFood(Settings.world.foodDensity * .1);
 
     AnimalHandler.init();
-    AnimalHandler.spawnBunnies(world, 100);
+    AnimalHandler.spawnBunnies(world, Settings.world.bunnies);
     scene.add(AnimalHandler.group);
-    //world.regions.forEach(region => region.debug(world));
 
     // pathfinder
     PathFinder.updateGrid();
+
+    // audio
+    waveAudio = AssetManager.audio("water.mp3", audioListener);
+    waveAudio.setLoop(true);
+    waveAudio.play();
+    updateAudio();
+
+    // start
+    animate();
+    tick();
   });
-
-  // misc
-  chartController = new ChartController();
-  window.addEventListener('resize', onWindowResize, false);
-
-  const gui = new GUI();
-  gui.add(Settings, "speed", 0, 1000, 1);
 }
-
-animate();
-tick();
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  labelRenderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function onPointerUp(event) {
@@ -171,7 +183,7 @@ function tick() {
   const delta = tickClock.getDelta();
   currentTickTime += delta;
   if (currentTickTime > (1 / Settings.speed)) {
-    chartController.track(stats.tick);
+    Statistics.track(stats.tick);
     stats.tick++;
     currentTickTime = 0;
     world.tick();
@@ -182,10 +194,8 @@ function tick() {
 function animate(time) {
   requestAnimationFrame(animate);
   const delta = animationClock.getDelta();
-  controls.update();
-  fps.update();
-  EcoInfo.update(stats);
   PathFinder.update();
+  EcoInfo.update(stats);
   TWEEN.update(time);
   if (AnimalHandler.initialized && Settings.speed > 0) {
     AnimalHandler.update(delta);
@@ -193,10 +203,34 @@ function animate(time) {
   if (bunnyInfo) {
     bunnyInfo.update();
   }
+  controls.update();
+  fps.update();
   render();
 }
 
 function render() {
-  labelRenderer.render(scene, camera);
   renderer.render(scene, camera);
+}
+
+function createFPS() {
+  const fps = new Stats();
+  fps.domElement.style.position = 'absolute';
+  fps.domElement.style.top = '0px';
+  document.body.appendChild(fps.domElement);
+  return fps;
+}
+
+function onCameraChange() {
+  updateAudio();
+}
+
+function updateAudio() {
+  if (!waveAudio) {
+    return;
+  }
+  const min = 50;
+  const max = 1000;
+  const y = camera.position.y;
+  const volume = y <= min ? 1 : (y > max ? 0 : (1 - (y - min) / (max - min)));
+  waveAudio.setVolume(volume * .3);
 }
