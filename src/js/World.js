@@ -16,7 +16,16 @@ export class World {
     this.tileSize = tileSize;
 
     this.worldGroup = new THREE.Group();
-    this.heightData = this.normalize(this.generateHeight(tiles, tiles, tileSize, Settings.world.waterLandRatio));
+    let baseHeightData = this.generateHeight(tiles, tiles, tileSize, Settings.world.waterLandRatio, Settings.world.disruption);
+    let max = getMax(baseHeightData);
+    while (max < 0) {
+      let min = getMin(baseHeightData);
+      let tenPercent = Math.abs(min - max) / 10;
+      baseHeightData.forEach(d => d + tenPercent);
+      max = getMax(baseHeightData);
+    }
+
+    this.heightData = this.normalize(baseHeightData);
 
     let terrainBuilder = new TerrainBuilder();
     this.terrain = terrainBuilder.terrain(this.tiles, this.tileSize, this.heightData);
@@ -30,17 +39,18 @@ export class World {
     this.regions = [];
 
     let scope = this;
-    Settings.onChange.push((key, value) => {
+    this.updateWaterFunction = (key, value) => {
       if (key === "speed") {
         scope.water.material.uniforms['flowDirection'] = {
           type: 'v2',
           value: new Vector2(.1 + value * .01, .1 + value * .01)
         }
       }
-    });
+    }
+    Settings.onChange.push(this.updateWaterFunction);
   }
 
-  generateHeight(width, height, size, waterLandRatio = .5) {
+  generateHeight(width, height, size, waterLandRatio = .5, disruption = .5) {
     const worldNoise = noise();
     worldNoise.seed(Math.random());
     const borderNoise = noise();
@@ -61,7 +71,8 @@ export class World {
         const border = Math.min(Math.min(borderX, borderY), d + cN);
 
         // world
-        const world = worldNoise.simplex2(x / (size * 2), y / (size * 2)); // -1 -> 1
+        let disruptionInverse = 3.5 - (disruption * 3);
+        const world = worldNoise.simplex2(x / (size * disruptionInverse), y / (size * disruptionInverse)); // -1 -> 1
         const amplify = (Math.min(border, world) * 100) + (40 * waterLandRatio);
         data[x + y * height] = amplify + (Math.abs(cN) * 50);
       }
@@ -75,16 +86,15 @@ export class World {
   }
 
   /**
-   * Normalizes between -1 and 1
+   * Normalizes between - 1 and 1 but keep's
    *
    * @param arr
    */
   normalize(arr) {
-    let max = getMax(arr);
-    let min = getMin(arr);
-    let diff = max - min;
+    const max = getMax(arr);
+    const min = getMin(arr) * -1;
     let normalized = [];
-    arr.forEach(v => normalized.push((v / diff) * 2) - 1);
+    arr.forEach(v => normalized.push(v < 0 ? v / min : v / max));
     return normalized;
   }
 
@@ -114,8 +124,8 @@ export class World {
   }
 
   generateTrees(modelNames, density) {
-    const trees = new THREE.Group();
-    trees.name = "trees";
+    this.treeGroup = new THREE.Group();
+    this.treeGroup.name = "trees";
     const treeGeometries = {};
     modelNames.forEach(tree => treeGeometries[tree] = []);
 
@@ -149,13 +159,21 @@ export class World {
       }
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      trees.add(mesh);
+      this.treeGroup.add(mesh);
     });
-    this.worldGroup.add(trees);
-    return trees;
+    this.worldGroup.add(this.treeGroup);
+    return this.treeGroup;
+  }
+
+  removeTrees() {
+    if (this.treeGroup) {
+      this.treeGroup.children[0].dispose();
+      this.worldGroup.remove(this.treeGroup);
+    }
   }
 
   buildRegions() {
+    this.regions = [];
     for (let z = 0; z < this.tiles; z++) {
       for (let x = 0; x < this.tiles; x++) {
         if (!this.isWater(x, z) && !this.hasObstacle(x, z) && this.getRegion(x, z) === undefined) {
@@ -189,6 +207,13 @@ export class World {
       this.foodMesh.setMatrixAt(i, food.model.matrix);
     }
     this.worldGroup.add(this.foodMesh);
+  }
+
+  removeFood() {
+    if (this.foodMesh) {
+      this.foodMesh.dispose();
+      this.worldGroup.remove(this.foodMesh);
+    }
   }
 
   spawnBabies(babies, mother) {
@@ -300,6 +325,17 @@ export class World {
 
   tick() {
     this.regions.forEach(region => region.tick(this));
+  }
+
+  dispose() {
+    this.removeTrees();
+    this.removeFood();
+    this.water.geometry.dispose();
+    this.water.material.dispose();
+    this.terrain.geometry.dispose();
+    this.terrain.material.dispose();
+    const i = Settings.onChange.indexOf(this.updateWaterFunction);
+    Settings.onChange.splice(i, 1);
   }
 
 }

@@ -18,7 +18,8 @@ import {AnimalHandler} from "./AnimalHandler";
 import {Statistics} from "./Statistics";
 import {EcoSetup} from "./EcoSetup";
 
-let camera, controls, scene, renderer, animationClock, tickClock, mixers, world, bunnyInfo, audioListener, fps;
+let camera, controls, scene, renderer, dirLight, animationClock, tickClock, mixers, world, bunnyInfo, audioListener,
+  fps, run;
 let waveAudio, windAudio;
 
 const raycaster = new THREE.Raycaster();
@@ -32,29 +33,18 @@ const stats = {
 init();
 
 function init() {
+  run = false;
+
   // animation
   animationClock = new THREE.Clock();
   tickClock = new THREE.Clock();
   mixers = [];
 
-  // init assets
-  AssetManager.init();
-
-  // statistic
-  Statistics.init();
-  Statistics.select("bunnies (sum)", 0);
-
-  EcoSetup.onStart().then(() => {
-    create();
-  });
-}
-
-function create() {
+  // scene stuff
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcccccc);
 
-  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
-  camera.position.set(Settings.world.tiles * 10, Settings.world.tiles * 14, Settings.world.tiles * 20);
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 12000);
 
   // renderer
   renderer = new THREE.WebGLRenderer({antialias: true});
@@ -67,16 +57,9 @@ function create() {
   // light
   const light = new THREE.AmbientLight(0x888888); // soft white light
   scene.add(light);
-  const dirLight = new THREE.DirectionalLight(0x777777);
-  const lightDistance = Settings.world.tiles * 20;
-  dirLight.position.set(lightDistance, lightDistance * 1.5, lightDistance);
+  dirLight = new THREE.DirectionalLight(0x777777);
   dirLight.castShadow = true;
   dirLight.shadow.camera.near = 1;
-  dirLight.shadow.camera.far = lightDistance * 3;
-  dirLight.shadow.camera.right = lightDistance;
-  dirLight.shadow.camera.left = -lightDistance;
-  dirLight.shadow.camera.top = lightDistance;
-  dirLight.shadow.camera.bottom = -lightDistance;
   dirLight.shadow.mapSize.width = 2048;
   dirLight.shadow.mapSize.height = 2048;
   scene.add(dirLight);
@@ -87,13 +70,73 @@ function create() {
   controls.enableDamping = true;
   controls.dampingFactor = .08;
   controls.minDistance = 50;
-  controls.maxDistance = 5000;
   controls.maxPolarAngle = Math.PI / 2;
   controls.keys = {LEFT: 65, UP: 87, RIGHT: 68, BOTTOM: 83};
   controls.keyPanSpeed = 20;
-  controls.target.set(Settings.world.tiles * 10, 0, Settings.world.tiles * 13);
+
+  // misc
+  window.addEventListener('resize', onWindowResize, false);
+  AssetManager.init();
+
+  // statistic
+  Statistics.init();
+  Statistics.select("bunnies (sum)", 0);
+
+  buildWorld();
+  Settings.onChange.push((key, value) => {
+    if (key === "world.tiles" || key === "world.waterLandRatio" || key === "world.disruption") {
+      world.dispose();
+      scene.remove(world.worldGroup);
+      buildWorld();
+    } else if (key === "world.treeDensity") {
+      generateTrees();
+      world.buildRegions();
+      spawnFood();
+    } else if (key === "world.foodDensity") {
+      spawnFood();
+    }
+  });
+
+  // go
+  animate();
+
+  EcoSetup.onStart().then(() => {
+    create();
+    run = true;
+  });
+}
+
+function buildWorld() {
+  camera.position.set(Settings.world.tiles * 10, Settings.world.tiles * 13, Settings.world.tiles * 19);
+
+  // light
+  const lightDistance = Settings.world.tiles * 20;
+  dirLight.position.set(lightDistance, lightDistance * 1.5, lightDistance);
+  dirLight.shadow.camera.far = lightDistance * 3;
+  dirLight.shadow.camera.right = lightDistance;
+  dirLight.shadow.camera.left = -lightDistance;
+  dirLight.shadow.camera.top = lightDistance;
+  dirLight.shadow.camera.bottom = -lightDistance;
+
+  // controls
+  controls.maxDistance = Math.max(1000, Settings.world.tiles * 20);
+  controls.target.set(Settings.world.tiles * 10, 0, Settings.world.tiles * 12.8);
   controls.update();
 
+  // add world
+  world = new World(Settings.world.tiles, Settings.world.tileSize);
+  scene.add(world.worldGroup);
+
+  AssetManager.ready().then(() => {
+    // world
+    generateTrees();
+    world.buildRegions();
+    spawnFood();
+  });
+
+}
+
+function create() {
   // audio
   audioListener = new THREE.AudioListener();
   audioListener.setMasterVolume(Settings.audio ? 1. : 0);
@@ -103,15 +146,6 @@ function create() {
       audioListener.setMasterVolume(value ? 1. : 0.);
     }
   });
-
-  // misc
-  window.addEventListener('resize', onWindowResize, false);
-
-  let tiles = Settings.world.tiles;
-  let tileSize = Settings.world.tileSize;
-
-  world = new World(tiles, tileSize);
-  scene.add(world.worldGroup);
 
   // util stuff
   PathFinder.init(world);
@@ -125,10 +159,7 @@ function create() {
 
   AssetManager.ready().then(() => {
     // world
-    world.generateTrees(["tree_3"], Settings.world.treeDensity);
     world.buildWaterMap();
-    world.buildRegions();
-    world.spawnFood(Settings.world.foodDensity * .1);
 
     AnimalHandler.init();
     AnimalHandler.spawnBunnies(world, Settings.world.bunnies);
@@ -144,7 +175,6 @@ function create() {
     updateAudio();
 
     // start
-    animate();
     tick();
   });
 }
@@ -193,18 +223,20 @@ function tick() {
 
 function animate(time) {
   requestAnimationFrame(animate);
-  const delta = animationClock.getDelta();
-  PathFinder.update();
-  EcoInfo.update(stats);
-  TWEEN.update(time);
-  if (AnimalHandler.initialized && Settings.speed > 0) {
-    AnimalHandler.update(delta);
+  if (run) {
+    const delta = animationClock.getDelta();
+    PathFinder.update();
+    EcoInfo.update(stats);
+    TWEEN.update(time);
+    if (AnimalHandler.initialized && Settings.speed > 0) {
+      AnimalHandler.update(delta);
+    }
+    if (bunnyInfo) {
+      bunnyInfo.update();
+    }
+    controls.update();
+    fps.update();
   }
-  if (bunnyInfo) {
-    bunnyInfo.update();
-  }
-  controls.update();
-  fps.update();
   render();
 }
 
@@ -233,4 +265,14 @@ function updateAudio() {
   const y = camera.position.y;
   const volume = y <= min ? 1 : (y > max ? 0 : (1 - (y - min) / (max - min)));
   waveAudio.setVolume(volume * .3);
+}
+
+function generateTrees() {
+  world.removeTrees();
+  world.generateTrees(["tree_3"], Settings.world.treeDensity);
+}
+
+function spawnFood() {
+  world.removeFood();
+  world.spawnFood(Settings.world.foodDensity * .1);
 }

@@ -276,7 +276,7 @@ export class Bunny {
       }
     } else if (this.action === Bunny.Actions.mate && !this.model.isJumping()) {
       this.model.lookAt(this.lastPartner.model.getPosition());
-      this.model.jump(10);
+      this.model.jump(4);
     } else if (this.action === Bunny.Actions.idle && Math.random() < .75) {
       this.jumpRandom(world);
     }

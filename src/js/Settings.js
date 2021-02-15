@@ -1,17 +1,20 @@
+import {deepProxy} from "./util/util";
+
 const InternalSettings = {
   speed: 1,
   audio: localStorageWithDefault("eco.audio", "boolean", true),
   genetics: {
-    mutationChance: localStorageWithDefault("eco.genetics.mutationChance", "float", .25),
-    mutationAmount: localStorageWithDefault("eco.genetics.mutationAmount", "float", .1)
+    mutationChance: localStorageWithDefault("eco.genetics.mutationChance", "float", .3),
+    mutationAmount: localStorageWithDefault("eco.genetics.mutationAmount", "float", .2)
   },
   world: {
-    tiles: localStorageWithDefault("eco.world.tiles", "int", 200),
+    tiles: localStorageWithDefault("eco.world.tiles", "int", 100),
     tileSize: 20,
     waterLandRatio: localStorageWithDefault("eco.world.waterLandRatio", "float", .5),
-    treeDensity: localStorageWithDefault("eco.world.treeDensity", "float", .1),
-    foodDensity: localStorageWithDefault("eco.world.foodDensity", "float", .1),
-    bunnies: localStorageWithDefault("eco.world.bunnies", "int", 100)
+    disruption: localStorageWithDefault("eco.world.disruption", "float", .5),
+    treeDensity: localStorageWithDefault("eco.world.treeDensity", "float", .15),
+    foodDensity: localStorageWithDefault("eco.world.foodDensity", "float", .15),
+    bunnies: localStorageWithDefault("eco.world.bunnies", "int", 50)
   },
   onChange: []
 }
@@ -26,14 +29,9 @@ function localStorageWithDefault(key, type, defaultValue) {
   return defaultValue;
 }
 
-const Settings = new Proxy(InternalSettings, {
-  set: function (target, key, value) {
-    if (target[key] !== value) {
-      const oldVal = target[key];
-      target[key] = value;
-      target.onChange.forEach(cb => cb(key, value, oldVal));
-    }
-    return true;
+const Settings = deepProxy(InternalSettings, {
+  set: function (target, keyArray, value, receiver) {
+    Settings.onChange.forEach(cb => cb(keyArray.join("."), value));
   }
 });
 

@@ -1,10 +1,12 @@
 import {Settings} from "./Settings";
 
-const overlay = document.getElementById("eco-setup-overlay");
+const overlay = document.getElementById("eco-setup-backdrop");
 const ecoSetupContainer = document.getElementById("eco-setup-container");
 const ecoSetup = document.getElementById("eco-setup");
 
 const startButton = document.getElementById("eco-setup-start-button");
+const minimizeButton = document.getElementById("eco-setup-minimize");
+const maximizeButton = document.getElementById("eco-setup-maximize");
 
 startButton.onclick = () => {
   EcoSetup.start();
@@ -15,6 +17,15 @@ ecoSetup.querySelectorAll(".eco-setup-tab").forEach(tab => {
     EcoSetup.showTab(tab.dataset.target);
   }
 });
+
+minimizeButton.onclick = () => {
+  EcoSetup.minimize();
+}
+
+maximizeButton.onclick = () => {
+  EcoSetup.maximize();
+}
+
 
 const EcoSetup = {
 
@@ -56,6 +67,18 @@ const EcoSetup = {
     ecoSetup.querySelectorAll(".eco-setup-tab-content").forEach(tabContent => tabContent.style.display = "none");
     ecoSetup.querySelector(target).style.display = "flex";
   },
+
+  minimize() {
+    overlay.style.opacity = 0;
+    ecoSetup.style.display = "none";
+    maximizeButton.style.display = "block";
+  },
+
+  maximize() {
+    overlay.style.opacity = .2;
+    ecoSetup.style.display = "flex";
+    maximizeButton.style.display = "none";
+  }
 
 }
 

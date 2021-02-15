@@ -6,15 +6,15 @@ canvas {
     display: block;
 }
 
-#eco-setup-overlay {
+#eco-setup-backdrop {
     position: absolute;
     left: 0;
     right: 0;
     top: 0;
     bottom: 0;
     z-index: 99;
-    background: #333333;
-    opacity: .7;
+    background: #000000;
+    opacity: .2;
 }
 
 #eco-setup-container {
@@ -30,7 +30,7 @@ canvas {
 
 #eco-setup {
     width: 50%;
-    height: 400px;
+    height: 500px;
     background: #000000;
     color: #ffffff;
     z-index: 100;
@@ -42,13 +42,14 @@ canvas {
 
 /* very lazy ;) */
 #eco-setup span {
-    color: #3197bc;
+    color: #2B86C2;
 }
 
 #eco-setup .eco-setup-tabs {
     display: flex;
     position: absolute;
     top: -34px;
+    width: 100%;
 }
 
 #eco-setup .eco-setup-tabs .eco-setup-tab {
@@ -61,6 +62,28 @@ canvas {
 
 #eco-setup .eco-setup-tabs .eco-setup-tab.eco-setup-tab-active {
     background: #000000;
+}
+
+#eco-setup-minimize {
+    padding: 8px 12px;
+    cursor: pointer;
+    background: #000000;
+    font-size: 1rem;
+    margin-left: auto;
+}
+
+#eco-setup-maximize {
+    padding: 8px 12px;
+    cursor: pointer;
+    background: #000000;
+    font-size: 1rem;
+    margin-left: auto;
+    color: #FFFFFF;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 0);
+    z-index: 100;
 }
 
 #eco-setup .eco-setup-tab-content {
@@ -141,7 +164,7 @@ canvas {
 }
 
 #eco-setup .eco-setup-row .eco-setup-row-input-slider .eco-setup-row-input-slider-progress {
-    background: #3197bc;
+    background: #2B86C2;
     height: 100%;
 }
 
@@ -253,7 +276,7 @@ canvas {
 #eco-info .eco-progress > .eco-progress-bar {
     display: block;
     height: 100%;
-    background-color: rgb(43, 134, 194);
+    background-color: #2B86C2;
 }
 
 #eco-info .eco-progress > .eco-progress-text {

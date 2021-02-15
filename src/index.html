@@ -9,7 +9,7 @@
 <% if (htmlWebpackPlugin.options.env === 'dev') { %>
 <% } %>
 
-<div id="eco-setup-overlay">
+<div id="eco-setup-backdrop">
 </div>
 <div id="eco-setup-container">
     <div id="eco-setup">
@@ -17,6 +17,7 @@
             <div class="eco-setup-tab eco-setup-intro-tab eco-setup-tab-active" data-target=".eco-setup-intro">Intro
             </div>
             <div class="eco-setup-tab eco-setup-world-tab" data-target=".eco-setup-world">World Settings</div>
+            <div id="eco-setup-minimize">▼</div>
         </div>
         <div class="eco-setup-tab-content eco-setup-intro">
             <p>Welcome to <span>Eco-Sim</span>!</p>
@@ -52,16 +53,24 @@
                 </div>
             </div>
             <div class="eco-setup-row">
+                <div class="eco-setup-row-name">Land Disruption</div>
+                <div class="eco-setup-row-input" data-target="world.disruption" data-min="0"
+                     data-max="100" data-type="percentage"></div>
+                <div class="eco-setup-row-description">How much the land mass is disrupted by water. Kind of
+                    defines the size and amount of lakes. [0-100]
+                </div>
+            </div>
+            <div class="eco-setup-row">
                 <div class="eco-setup-row-name">Tree Density</div>
                 <div class="eco-setup-row-input" data-target="world.treeDensity" data-min="0"
                      data-max="100" data-type="percentage"></div>
-                <div class="eco-setup-row-description">The percentage of trees. [0-100]</div>
+                <div class="eco-setup-row-description">The amount of trees. [0-100]</div>
             </div>
             <div class="eco-setup-row">
                 <div class="eco-setup-row-name">Food Density</div>
                 <div class="eco-setup-row-input" data-target="world.foodDensity" data-min="0"
                      data-max="100" data-type="percentage"></div>
-                <div class="eco-setup-row-description">The percentage of food. [0-100]</div>
+                <div class="eco-setup-row-description">The amount of food. [0-100]</div>
             </div>
             <div class="eco-setup-header">Bunnies</div>
             <div class="eco-setup-row">
@@ -92,6 +101,7 @@
         </div>
     </div>
 </div>
+<div id="eco-setup-maximize" style="display: none">▲</div>
 
 <div id="eco-audio-button" class="eco-bottom-button"></div>
 <div id="eco-info-button" class="eco-bottom-button">i</div>

@@ -18,6 +18,10 @@ const Collection = {
     data: [],
     color: "#a7ffab"
   },
+  "lifespan (avg)": {
+    data: [],
+    color: "#ff9131"
+  },
   "speed (avg)": {
     data: [],
     color: "#2cf9fc"
@@ -86,6 +90,9 @@ const Statistics = {
       Collection["kids (sum)"].data.push(bunniesArray.filter((bunny) => {
         return !bunny.isAdult();
       }).length);
+      Collection["lifespan (avg)"].data.push(bunniesArray.reduce((sum, bunny) => {
+        return sum + bunny.traits.lifespan;
+      }, 0) / bunniesArray.length);
       Collection["speed (avg)"].data.push(bunniesArray.reduce((sum, bunny) => {
         return sum + bunny.traits.speed;
       }, 0) / bunniesArray.length);
