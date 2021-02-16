@@ -3,7 +3,7 @@ import {Vector2} from "three";
 import {noise} from "./util/perlin";
 import {TerrainBuilder} from "./TerrainBuilder";
 import {AssetManager} from "./AssetManager";
-import {debugBox, getMax, getMin, getRandomArbitrary, getRandomInt, radialSearch} from "./util/util";
+import {debugBox, getMax, getMin, getRandomArbitrary, getRandomInt} from "./util/util";
 import {Region} from "./Region";
 import {Settings} from "./Settings";
 import {AnimalHandler} from "./AnimalHandler";
@@ -99,17 +99,60 @@ export class World {
   }
 
   buildWaterMap() {
+    // implementation tries to be as fast as possible
+    const data = [...Array(this.tiles)].map(x => Array(this.tiles).fill(null));
+    // first run init index 0 for all tiles which are directly at the water
+    let todo = [];
     for (let i = 0; i < this.heightData.length; i++) {
-      const grid = this.toGridVector(i);
-      if (this.isWater(grid.x, grid.y) || this.hasObstacle(grid.x, grid.y)) {
-        this.waterMap[i] = null;
+      const tile = this.toGridVector(i);
+      if (this.isWater(tile.x, tile.y) || this.hasObstacle(tile.x, tile.y)) {
         continue;
       }
-      if (this.hasWater(grid.x, grid.y)) {
-        this.waterMap[i] = new Vector2(grid.x, grid.y);
-        continue;
+      data[tile.y][tile.x] = {
+        vector: null,
+        index: null,
+        x: tile.x,
+        y: tile.y
       }
-      this.waterMap[i] = radialSearch(grid, this, this.#updateWaterFound);
+      if (this.hasWater(tile.x, tile.y)) {
+        data[tile.y][tile.x].vector = new Vector2(tile.x, tile.y);
+        data[tile.y][tile.x].index = 0;
+      } else {
+        todo.push(data[tile.y][tile.x]);
+      }
+    }
+    // run for the inner tiles
+    let i = 1;
+    while (todo.length > 0) {
+      const newTodo = [];
+      for (let j = 0; j < todo.length; j++) {
+        let hv = check(data, todo[j], i, [0, -1, 1, 0, 0, 1, -1, 0], this.tiles); // horizontal/vertical
+        let diag = check(data, todo[j], i, [-1, -1, 1, -1, 1, 1, -1, 1], this.tiles); // diagonal
+        let best = hv ? (diag ? (diag.index < hv.index ? diag : hv) : hv) : diag;
+        if (best) {
+          todo[j].vector = best.vector.clone();
+          todo[j].index = i;
+        } else {
+          newTodo.push(todo[j]);
+        }
+      }
+      i++;
+      todo = newTodo;
+    }
+    this.waterMap = [].concat(...data).map(d => d ? d.vector : null);
+
+    function check(data, curr, i, arr, tiles) {
+      for (let j = 0; j < arr.length; j += 2) {
+        let x = curr.x + arr[j];
+        let y = curr.y + arr[j + 1];
+        if (x < 0 || y < 0 || x >= tiles || y >= tiles) {
+          continue;
+        }
+        if (data[y][x] !== null && i - 1 === data[y][x].index) {
+          return data[y][x];
+        }
+      }
+      return null;
     }
   }
 

@@ -60,28 +60,30 @@ const Statistics = {
       "cause of death (hunger)": 0,
       "cause of death (age)": 0
     }
-    let dataSet1 = document.getElementById("chartDataSet1");
-    let dataSet2 = document.getElementById("chartDataSet2");
-    addOption(dataSet1, dataSet2, "none");
+    this.dataSet1 = document.getElementById("chartDataSet1");
+    this.dataSet2 = document.getElementById("chartDataSet2");
+    addOption(this.dataSet1, this.dataSet2, "none");
     for (let key of Object.keys(Collection)) {
-      addOption(dataSet1, dataSet2, key);
+      addOption(this.dataSet1, this.dataSet2, key);
     }
     this.chart = new Chart(document.getElementById("chart").getContext("2d"), this.getChartConfig());
-
-    dataSet1.onchange = (e) => {
+    this.dataSet1.onchange = (e) => {
       this.select(e.target.value, 0);
     }
-    dataSet2.onchange = (e) => {
+    this.dataSet2.onchange = (e) => {
       this.select(e.target.value, 1);
     }
-    document.getElementById("chartDataUpdateFrequency").onchange = (e) => {
-      this.updateFrequency = parseInt(e.target.value);
-    }
-    this.updateFrequency = 100;
+    this.updateFrequency = 10;
+    this.reduceAmount = 2;
   },
 
   track(tick) {
     if (tick % this.updateFrequency === 0) {
+      if (tick !== 0 && tick % (this.updateFrequency * 100) === 0) {
+        this.reduceData(this.reduceAmount);
+        this.updateFrequency = this.updateFrequency * this.reduceAmount;
+      }
+
       const bunniesArray = [].concat(AnimalHandler.maleBunnies).concat(AnimalHandler.femaleBunnies).map(model => model.bunny);
 
       Collection["bunnies (sum)"].data.push(AnimalHandler.maleBunniesMesh.count + AnimalHandler.femaleBunniesMesh.count);
@@ -112,6 +114,12 @@ const Statistics = {
     this.chart.data.datasets[dataSet].data = data ? data.data : [];
     this.chart.data.datasets[dataSet].borderColor = data ? data.color : null;
     this.chart.update();
+    if (dataSet === 0) {
+      this.dataSet1.value = name;
+    }
+    if (dataSet === 1) {
+      this.dataSet2.value = name;
+    }
   },
 
   getChartConfig() {
@@ -145,6 +153,27 @@ const Statistics = {
         }
       }
     };
+  },
+
+  reduceData(amount) {
+    Object.keys(Collection).forEach(key => {
+      const newData = [];
+      for (let i = 0; i < Collection[key].data.length; i += amount) {
+        newData.push(Collection[key].data[i]);
+      }
+      Collection[key].data = newData;
+    });
+    const newLabels = [];
+    for (let i = 0; i < this.chart.data.labels.length; i += amount) {
+      newLabels.push(this.chart.data.labels[i]);
+    }
+    this.chart.data.labels = newLabels;
+    if (this.dataSet1.value !== "none") {
+      this.select(this.dataSet1.value, 0)
+    }
+    if (this.dataSet2.value !== "none") {
+      this.select(this.dataSet2.value, 1)
+    }
   }
 
 }
