@@ -4,49 +4,50 @@ import {Food} from "./Food";
 
 export class Region {
 
-  constructor() {
+  constructor(world, regionId) {
+    this.world = world;
+    this.regionId = regionId;
     this.food = new Map();
-    this.tiles = {};
     this.animals = [];
   }
 
-  build(world, gridX, gridZ) {
-    let toExploreStack = [new THREE.Vector2(gridX, gridZ)];
+  build(gridX, gridZ) {
+    let toExploreStack = [[gridX, gridZ]];
     while (toExploreStack.length > 0) {
       const tile = toExploreStack.pop();
-      if (this.isValidTile(world, tile)) {
-        this.expand(world, tile, toExploreStack);
+      if (this.#isValidTile(tile)) {
+        this.expand(tile, toExploreStack);
       }
     }
   }
 
-  expand(world, tile, toExploreStack) {
-    this.tiles[tile.x + "_" + tile.y] = true;
+  expand(tile, toExploreStack) {
+    this.world.regionTiles[tile[1]][tile[0]] = this.regionId;
     const sides = [
       1, 1, 0, 1, -1, 1,
       1, 0, -1, 0,
       1, -1, 0, -1, -1, -1,
     ];
     for (let i = 0; i < sides.length; i += 2) {
-      let newTile = new THREE.Vector2(tile.x + sides[i], tile.y + sides[i + 1]);
-      if (this.isValidTile(world, newTile)) {
-        toExploreStack.push(new THREE.Vector2(newTile.x, newTile.y));
+      let newTile = [tile[0] + sides[i], tile[1] + sides[i + 1]];
+      if (this.#isValidTile(newTile)) {
+        toExploreStack.push(newTile);
       }
     }
   }
 
-  isValidTile(world, tile) {
-    return !(tile.x < 0 || tile.x > world.tiles || tile.y < 0 || tile.y > world.tiles ||
-      this.isPartOf(tile.x, tile.y) || world.isWater(tile.x, tile.y) || world.hasObstacle(tile.x, tile.y));
+  #isValidTile(tile) {
+    return !(tile[0] < 0 || tile[0] > this.world.tiles || tile[1] < 0 || tile[1] > this.world.tiles ||
+      this.isPartOf(tile[0], tile[1]) || this.world.isWater(tile[0], tile[1]) || this.world.hasObstacle(tile[0], tile[1]));
   }
 
   isPartOf(gridX, gridZ) {
-    return this.tiles[gridX + "_" + gridZ];
+    return this.world.regionTiles[gridZ][gridX] === this.regionId;
   }
 
-  addFood(world, index, x, z) {
+  addFood(index, x, z) {
     const food = new Food(index, x, z);
-    const scenePosition = world.toScene(x, z);
+    const scenePosition = this.world.toScene(x, z);
     food.model.position.copy(scenePosition);
     food.updateSize();
     food.model.updateMatrix();
@@ -75,12 +76,12 @@ export class Region {
     return this.food.has(x + "_" + z);
   }
 
-  debug(world) {
+  debug() {
     let color = new THREE.Color(Math.random(), Math.random(), Math.random());
     Object.keys(this.tiles).forEach(key => {
       const x = parseInt(key.split("_")[0]);
       const z = parseInt(key.split("_")[1]);
-      debugBox(world, x, z, color)
+      debugBox(this.world, x, z, color)
     });
   }
 
@@ -93,9 +94,9 @@ export class Region {
     }
   }
 
-  tick(world) {
-    this.food.forEach(food => food.tick(world));
-    this.animals.forEach(animal => animal.tick(world));
+  tick() {
+    this.food.forEach(food => food.tick(this.world));
+    this.animals.forEach(animal => animal.tick(this.world));
   }
 
 }

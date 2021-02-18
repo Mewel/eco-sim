@@ -1,95 +1,105 @@
 import * as THREE from "three";
-import {BufferGeometryUtils} from 'three/examples/jsm/utils/BufferGeometryUtils';
 import {Water} from "three/examples/jsm/objects/Water2";
 
 export class TerrainBuilder {
 
-  terrain(tiles, tileSize, heightData) {
-    const geometries = [];
-    const matrix = new THREE.Matrix4();
-    const halfTileSize = tileSize / 2;
+  static POSITION = {
+    top: [0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1],
+    xPlus: [1, 0, 1, 1, 0, 0, 1, -1, 1, 1, -1, 0],
+    xMinus: [0, 0, 0, 0, 0, 1, 0, -1, 0, 0, -1, 1],
+    zPlus: [0, 0, 1, 1, 0, 1, 0, -1, 1, 1, -1, 1],
+    zMinus: [1, 0, 0, 0, 0, 0, 1, -1, 0, 0, -1, 0]
+  };
 
-    const scaleTexture = 1;
+  static NORMALS = {
+    top: [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0],
+    xPlus: [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0],
+    xMinus: [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0],
+    zPlus: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
+    zMinus: [0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1]
+  }
+
+  static INDEX = [0, 2, 1, 2, 3, 1];
+
+  terrain(tiles, tileSize, heightData) {
     const uvSize = 1 / tiles;
-    const uvOffset = uvSize / 3;
+    const info = {
+      tileSize: tileSize,
+      halfTileSize: tileSize / 2,
+      scaleTexture: 1,
+      uvSize: uvSize,
+      uvOffset: uvSize / 3,
+      indexCounter: 0,
+    }
+    const data = {
+      vertices: [],
+      uv: [],
+      normals: [],
+      index: []
+    }
 
     for (let i = 0; i < heightData.length; i++) {
-      let grid = this.grid(i, tiles, heightData);
-      const sceneY = (grid.y * halfTileSize) - halfTileSize;
+      info.tile = this.getTile(i, tiles, heightData);
+      info.uv = [info.tile[0] / tiles, info.tile[2] / tiles];
 
-      const u = grid.x / tiles;
-      const v = grid.z / tiles;
+      const xPlus = (heightData[i + 1] < 0 ? -1 : 1);
+      const xMinus = (heightData[i - 1] < 0 ? -1 : 1);
+      const zPlus = (heightData[i + tiles] < 0 ? -1 : 1);
+      const zMinus = (heightData[i - tiles] < 0 ? -1 : 1);
 
-      const pyGeometry = new THREE.PlaneGeometry(tileSize, tileSize);
-      this.applyUV(pyGeometry, u, v, uvSize, uvOffset);
-      pyGeometry.rotateX(-Math.PI / 2);
-      pyGeometry.translate(0, 0, 0);
-      matrix.makeTranslation(halfTileSize + grid.x * tileSize, sceneY, halfTileSize + grid.z * tileSize);
-      geometries.push(pyGeometry.clone().applyMatrix4(matrix));
-
-      const xPlus1 = this.grid(i + 1, tiles, heightData);
-      const xMinus1 = this.grid(i - 1, tiles, heightData);
-      const zPlus1 = this.grid(i + tiles, tiles, heightData);
-      const zMinus1 = this.grid(i - tiles, tiles, heightData);
-
-      if (grid.x === tiles - 1 || grid.y > xPlus1.y) {
-        const pxGeometry = new THREE.PlaneGeometry(tileSize, tileSize);
-        this.applyUV(pxGeometry, u, v, uvSize, uvOffset);
-        pxGeometry.rotateY(Math.PI / 2);
-        pxGeometry.translate(halfTileSize, -halfTileSize, 0);
-        matrix.makeTranslation(halfTileSize + grid.x * tileSize, sceneY, halfTileSize + grid.z * tileSize);
-        geometries.push(pxGeometry.clone().applyMatrix4(matrix));
+      this.applyData(i, info, data, "top");
+      if (info.tile[0] === tiles - 1 || info.tile[1] > xPlus) {
+        this.applyData(i, info, data, "xPlus");
       }
-
-      if (grid.x === 0 || grid.y > xMinus1.y) {
-        const nxGeometry = new THREE.PlaneGeometry(tileSize, tileSize);
-        this.applyUV(nxGeometry, u, v, uvSize, uvOffset);
-        nxGeometry.rotateY(-Math.PI / 2);
-        nxGeometry.translate(-halfTileSize, -halfTileSize, 0);
-        matrix.makeTranslation(halfTileSize + grid.x * tileSize, sceneY, halfTileSize + grid.z * tileSize);
-        geometries.push(nxGeometry.clone().applyMatrix4(matrix));
+      if (info.tile[0] === 0 || info.tile[1] > xMinus) {
+        this.applyData(i, info, data, "xMinus");
       }
-
-      if (grid.z === tiles - 1 || grid.y > zPlus1.y) {
-        const pzGeometry = new THREE.PlaneGeometry(tileSize, tileSize);
-        this.applyUV(pzGeometry, u, v, uvSize, uvOffset);
-        pzGeometry.translate(0, -halfTileSize, halfTileSize);
-        matrix.makeTranslation(halfTileSize + grid.x * tileSize, sceneY, halfTileSize + grid.z * tileSize);
-        geometries.push(pzGeometry.clone().applyMatrix4(matrix));
+      if (info.tile[2] === tiles - 1 || info.tile[1] > zPlus) {
+        this.applyData(i, info, data, "zPlus");
       }
-
-      if (grid.z === 0 || grid.y > zMinus1.y) {
-        const nzGeometry = new THREE.PlaneGeometry(tileSize, tileSize);
-        this.applyUV(nzGeometry, u, v, uvSize, uvOffset);
-        nzGeometry.rotateY(-Math.PI);
-        nzGeometry.translate(0, -halfTileSize, -halfTileSize);
-        matrix.makeTranslation(halfTileSize + grid.x * tileSize, sceneY, halfTileSize + grid.z * tileSize);
-        geometries.push(nzGeometry.clone().applyMatrix4(matrix));
+      if (info.tile[2] === 0 || info.tile[1] > zMinus) {
+        this.applyData(i, info, data, "zMinus");
       }
     }
-    const geometry = BufferGeometryUtils.mergeBufferGeometries(geometries);
-    geometry.computeBoundingSphere();
-    geometry.normalizeNormals();
 
-    const texture = this.generateTexture(tiles, heightData, scaleTexture);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(Float32Array.from(data.vertices), 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(Float32Array.from(data.uv), 2));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(Float32Array.from(data.normals), 3));
+    geometry.index = new THREE.Uint32BufferAttribute(Uint32Array.from(data.index), 1);
+    geometry.computeBoundingSphere();
+
+    const texture = this.generateTexture(tiles, heightData, info.scaleTexture);
     const terrain = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({map: texture}));
     terrain.receiveShadow = true;
+
     return terrain;
   }
 
-  grid(i, tiles, heightData) {
-    return new THREE.Vector3(i % tiles, (heightData[i] < 0 ? -1 : 1), Math.floor(i / tiles));
+  applyData(i, info, data, direction) {
+    const offset = [info.tile[0] * info.tileSize, (info.tile[1] * info.halfTileSize) - info.halfTileSize, info.tile[2] * info.tileSize];
+    TerrainBuilder.POSITION[direction].map((v, j) => {
+      return offset[j % 3] + v * info.tileSize;
+    }).forEach(v => data.vertices.push(v));
+    this.getUV(info).forEach(v => data.uv.push(v));
+    TerrainBuilder.NORMALS[direction].forEach(v => data.normals.push(v));
+    TerrainBuilder.INDEX.map(v => v + info.indexCounter * 4).forEach(v => data.index.push(v));
+    info.indexCounter++;
   }
 
-  applyUV(geometry, u, v, uvSize, uvOffset) {
-    geometry.attributes.uv.array[0] = u + uvOffset;
-    geometry.attributes.uv.array[1] = v + uvOffset;
-    geometry.attributes.uv.array[2] = u + uvSize - uvOffset;
-    geometry.attributes.uv.array[3] = v + uvOffset;
-    geometry.attributes.uv.array[4] = u + uvOffset;
-    geometry.attributes.uv.array[5] = v + uvSize - uvOffset;
-    geometry.attributes.uv.array[6] = u + uvSize - uvOffset;
-    geometry.attributes.uv.array[7] = v + uvSize - uvOffset;
+  getUV(info) {
+    const u = info.uv[0];
+    const v = info.uv[1];
+    return [
+      u + info.uvOffset, v + info.uvOffset,
+      u + info.uvSize - info.uvOffset, v + info.uvOffset,
+      u + info.uvOffset, v + info.uvSize - info.uvOffset,
+      u + info.uvSize - info.uvOffset, v + info.uvSize - info.uvOffset
+    ];
+  }
+
+  getTile(i, tiles, heightData) {
+    return [i % tiles, (heightData[i] < 0 ? -1 : 1), Math.floor(i / tiles)];
   }
 
   generateTexture(tiles, heightData, scale) {
@@ -113,7 +123,7 @@ export class TerrainBuilder {
           imageData[i * 3 + 2] = shoreToWater.b * 255;
         } else {
           let beachToGras = beach.clone().lerp(gras, smoothstep(0, 0.3, heightData[i]));
-          let grasToDark = beachToGras.lerp(darkGras,  heightData[i]);
+          let grasToDark = beachToGras.lerp(darkGras, heightData[i]);
           imageData[i * 3] = grasToDark.r * 255;
           imageData[i * 3 + 1] = grasToDark.g * 255;
           imageData[i * 3 + 2] = grasToDark.b * 255;

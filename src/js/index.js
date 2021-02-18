@@ -85,9 +85,11 @@ function init() {
   buildWorld();
   Settings.onChange.push((key, value) => {
     if (key === "world.tiles" || key === "world.waterLandRatio" || key === "world.disruption") {
+      let startTime = new Date().valueOf();
       world.dispose();
       scene.remove(world.worldGroup);
       buildWorld();
+      console.log("took: " + (new Date().valueOf() - startTime) + "ms");
     } else if (key === "world.treeDensity") {
       generateTrees();
       world.buildRegions();

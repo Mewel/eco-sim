@@ -24,7 +24,6 @@ export class World {
       baseHeightData.forEach(d => d + tenPercent);
       max = getMax(baseHeightData);
     }
-
     this.heightData = this.normalize(baseHeightData);
 
     let terrainBuilder = new TerrainBuilder();
@@ -36,7 +35,6 @@ export class World {
     this.worldGroup.add(this.water);
     this.obstacles = {};
     this.waterMap = [];
-    this.regions = [];
 
     let scope = this;
     this.updateWaterFunction = (key, value) => {
@@ -217,19 +215,21 @@ export class World {
 
   buildRegions() {
     this.regions = [];
+    this.regionTiles = [...Array(this.tiles)].map(x => Array(this.tiles).fill(-1));
     for (let z = 0; z < this.tiles; z++) {
       for (let x = 0; x < this.tiles; x++) {
-        if (!this.isWater(x, z) && !this.hasObstacle(x, z) && this.getRegion(x, z) === undefined) {
-          let region = new Region();
+        if (!this.isWater(x, z) && !this.hasObstacle(x, z) && this.getRegion(x, z) === null) {
+          let region = new Region(this, this.regions.length);
           this.regions.push(region);
-          region.build(this, x, z);
+          region.build(x, z);
         }
       }
     }
   }
 
   getRegion(gridX, gridZ) {
-    return this.regions.find(region => region.isPartOf(gridX, gridZ));
+    const index = this.regionTiles[gridZ][gridX];
+    return index >= 0 ? this.regions[index] : null;
   }
 
   spawnFood(density) {
@@ -240,13 +240,13 @@ export class World {
         if (Math.random() > density || this.isWater(x, z) || this.hasObstacle(x, z)) {
           continue;
         }
-        spawns.push(new THREE.Vector2(x, z));
+        spawns.push([x, z]);
       }
     }
     this.foodMesh = new DynamicInstancedMesh(carrot.geometry, carrot.material, spawns.length);
     for (let i = 0; i < spawns.length; i++) {
       const spawn = spawns[i];
-      const food = this.getRegion(spawn.x, spawn.y).addFood(this, i, spawn.x, spawn.y);
+      const food = this.getRegion(spawn[0], spawn[1]).addFood(i, spawn[0], spawn[1]);
       this.foodMesh.setMatrixAt(i, food.model.matrix);
     }
     this.worldGroup.add(this.foodMesh);
@@ -254,6 +254,7 @@ export class World {
 
   removeFood() {
     if (this.foodMesh) {
+      this.regions.forEach(region => region.food.clear());
       this.foodMesh.dispose();
       this.worldGroup.remove(this.foodMesh);
     }
@@ -371,8 +372,8 @@ export class World {
   }
 
   dispose() {
-    this.removeTrees();
-    this.removeFood();
+    this.treeGroup.children[0].dispose();
+    this.foodMesh.dispose();
     this.water.geometry.dispose();
     this.water.material.dispose();
     this.terrain.geometry.dispose();
