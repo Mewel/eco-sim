@@ -114,7 +114,7 @@ function buildWorld() {
   // light
   const lightDistance = Settings.world.tiles * 20;
   dirLight.position.set(lightDistance, lightDistance * 1.5, lightDistance);
-  dirLight.shadow.camera.far = lightDistance * 3;
+  dirLight.shadow.camera.far = lightDistance * 6;
   dirLight.shadow.camera.right = lightDistance;
   dirLight.shadow.camera.left = -lightDistance;
   dirLight.shadow.camera.top = lightDistance;
@@ -227,11 +227,10 @@ function animate(time) {
   requestAnimationFrame(animate);
   if (run) {
     const delta = animationClock.getDelta();
-    PathFinder.update();
     EcoInfo.update(stats);
     TWEEN.update(time);
     if (AnimalHandler.initialized && Settings.speed > 0) {
-      AnimalHandler.update(delta);
+      AnimalHandler.update(world, delta);
     }
     if (bunnyInfo) {
       bunnyInfo.update();

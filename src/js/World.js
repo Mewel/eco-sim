@@ -1,9 +1,8 @@
 import * as THREE from "three";
-import {Vector2} from "three";
 import {noise} from "./util/perlin";
 import {TerrainBuilder} from "./TerrainBuilder";
 import {AssetManager} from "./AssetManager";
-import {debugBox, getMax, getMin, getRandomArbitrary, getRandomInt} from "./util/util";
+import {debugBox, distance, getMax, getMin, getRandomArbitrary, getRandomInt} from "./util/util";
 import {Region} from "./Region";
 import {Settings} from "./Settings";
 import {AnimalHandler} from "./AnimalHandler";
@@ -41,7 +40,7 @@ export class World {
       if (key === "speed") {
         scope.water.material.uniforms['flowDirection'] = {
           type: 'v2',
-          value: new Vector2(.1 + value * .01, .1 + value * .01)
+          value: new THREE.Vector2(.1 + value * .01, .1 + value * .01)
         }
       }
     }
@@ -102,21 +101,21 @@ export class World {
     // first run init index 0 for all tiles which are directly at the water
     let todo = [];
     for (let i = 0; i < this.heightData.length; i++) {
-      const tile = this.toGridVector(i);
-      if (this.isWater(tile.x, tile.y) || this.hasObstacle(tile.x, tile.y)) {
+      const tile = [i % this.tiles, Math.floor(i / this.tiles)];
+      if (this.isWater(tile[0], tile[1]) || this.hasObstacle(tile[0], tile[1])) {
         continue;
       }
-      data[tile.y][tile.x] = {
+      data[tile[1]][tile[0]] = {
         vector: null,
         index: null,
-        x: tile.x,
-        y: tile.y
+        x: tile[0],
+        y: tile[1]
       }
-      if (this.hasWater(tile.x, tile.y)) {
-        data[tile.y][tile.x].vector = new Vector2(tile.x, tile.y);
-        data[tile.y][tile.x].index = 0;
+      if (this.hasWater(tile[0], tile[1])) {
+        data[tile[1]][tile[0]].vector = [tile[0], tile[1]];
+        data[tile[1]][tile[0]].index = 0;
       } else {
-        todo.push(data[tile.y][tile.x]);
+        todo.push(data[tile[1]][tile[0]]);
       }
     }
     // run for the inner tiles
@@ -128,7 +127,7 @@ export class World {
         let diag = check(data, todo[j], i, [-1, -1, 1, -1, 1, 1, -1, 1], this.tiles); // diagonal
         let best = hv ? (diag ? (diag.index < hv.index ? diag : hv) : hv) : diag;
         if (best) {
-          todo[j].vector = best.vector.clone();
+          todo[j].vector = [best.vector[0], best.vector[1]];
           todo[j].index = i;
         } else {
           newTodo.push(todo[j]);
@@ -176,15 +175,15 @@ export class World {
           continue;
         }
         this.obstacles[x + "_" + z] = true;
-        const sceneVector = this.toScene(x, z, "center");
+        const sceneVector = this.toScene(x, z);
         const key = modelNames[getRandomInt(0, modelNames.length)];
         let scale = 20;
         let yScale = getRandomArbitrary(-5, 5);
         let scaleMatrix = new THREE.Matrix4();
         scaleMatrix.set(scale,
-          0, 0, sceneVector.x,
-          0, scale + yScale, 0, sceneVector.y,
-          0, 0, scale, sceneVector.z,
+          0, 0, sceneVector[0],
+          0, scale + yScale, 0, 0,
+          0, 0, scale, sceneVector[1],
           0, 0, 0, 1);
         let rotateMatrix = new THREE.Matrix4();
         rotateMatrix.makeRotationY(getRandomArbitrary(0, 2 * Math.PI));
@@ -261,10 +260,9 @@ export class World {
   }
 
   spawnBabies(babies, mother) {
-    const position = mother.model.getPosition();
+    const position = mother.model.getPositionArray();
     babies.forEach(baby => {
-      let tile = this.toGrid(position.x, position.z);
-      baby.model.setPosition(position.x, 0, position.z);
+      baby.model.setPosition(position[0], 0, position[1]);
       baby.region = mother.region;
       AnimalHandler.addBunny(baby);
     });
@@ -291,9 +289,10 @@ export class World {
       return [];
     }
     const d = maxGridDistance * this.tileSize;
-    let v = new THREE.Vector3(gridX * this.tileSize, 0, gridZ * this.tileSize);
+    const thisX = gridX * this.tileSize;
+    const thisZ = gridZ * this.tileSize;
     return region.animals.filter(animal => {
-      return v.distanceTo(animal.model.getPosition()) <= d;
+      return distance(thisX, thisZ, animal.model.getPosition().x, animal.model.getPosition().z) <= d;
     });
   }
 
@@ -323,7 +322,19 @@ export class World {
   }
 
   isWalkable(gridX, gridZ) {
-    return !this.isWater(gridX, gridZ) && !this.hasObstacle(gridX, gridZ);
+    return gridX >= 0 && gridZ >= 0 && gridX < this.tiles && gridZ < this.tiles &&
+      !this.isWater(gridX, gridZ) && !this.hasObstacle(gridX, gridZ);
+  }
+
+  isReachable(from, to) {
+    if (!this.isWalkable(from[0], from[1]) || !this.isWalkable(to[0], to[1])) {
+      return false;
+    }
+    try {
+      return this.regionTiles[from[1]][from[0]] === this.regionTiles[to[1]][to[0]];
+    } catch (e) {
+      console.log(e);
+    }
   }
 
   getClosestWaterTile(gridX, gridZ, maxGridDistance) {
@@ -337,7 +348,7 @@ export class World {
       debugBox(this, gridX, gridZ, 0x0000ff);
       return null;
     }
-    return new THREE.Vector2(gridX, gridZ).distanceTo(closestTile) <= maxGridDistance ? closestTile : null;
+    return distance(gridX, gridZ, closestTile[0], closestTile[1]) <= maxGridDistance ? closestTile : null;
   }
 
   hasFood(gridX, gridZ) {
@@ -353,18 +364,19 @@ export class World {
     return region.hasFood(gridX, gridZ);
   }
 
-  toGridVector(index) {
-    return new THREE.Vector2(index % this.tiles, Math.floor(index / this.tiles));
+  toScene(gridX, gridY) {
+    const sceneX = gridX * this.tileSize + (this.tileSize / 2);
+    const sceneZ = gridY * this.tileSize + (this.tileSize / 2);
+    return [sceneX, sceneZ];
   }
 
-  toScene(gridX, gridY, align = "center") {
-    const sceneX = gridX * this.tileSize + (align === "center" ? this.tileSize / 2 : 0);
-    const sceneZ = gridY * this.tileSize + (align === "center" ? this.tileSize / 2 : 0);
-    return new THREE.Vector3(sceneX, 0, sceneZ);
+  toSceneVector3(gridX, gridY) {
+    const r = this.toScene(gridX, gridY);
+    return new THREE.Vector3(r[0], 0, r[1]);
   }
 
   toGrid(sceneX, sceneZ) {
-    return new THREE.Vector2(Math.floor(sceneX / this.tileSize), Math.floor(sceneZ / this.tileSize));
+    return [Math.floor(sceneX / this.tileSize), Math.floor(sceneZ / this.tileSize)];
   }
 
   tick() {

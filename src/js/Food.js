@@ -5,7 +5,7 @@ export class Food {
 
   constructor(index, x, z) {
     this.index = index;
-    this.tile = new THREE.Vector2(x, z);
+    this.tile = [x, z];
     this.value = 1.;
     this.model = new Object3D();
     this.maxSize = 30;

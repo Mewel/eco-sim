@@ -1,5 +1,4 @@
 import {js} from "easystarjs";
-import * as THREE from "three";
 
 const PathFinder = {
 
@@ -14,46 +13,15 @@ const PathFinder = {
     this.updateGrid();
   },
 
-  find(fromX, fromZ, toX, toZ, onCreated = null) {
-    return new Promise((resolve, reject) => {
-      const id = this.easyStar.findPath(fromX, fromZ, toX, toZ, (path) => {
-        if (path === null) {
-          reject("no path found")
-        } else {
-          resolve(path);
-        }
-      });
-      if (id && onCreated) {
-        onCreated(id);
+  find(fromX, fromZ, toX, toZ, resolve, reject) {
+    this.easyStar.findPath(fromX, fromZ, toX, toZ, (path) => {
+      if (path === null) {
+        reject("no path found");
+      } else {
+        resolve(path);
       }
     });
-  },
-
-  getCurve(fromGridX, fromGridZ, toGridX, toGridZ, onCreated = null) {
-    return this.find(fromGridX, fromGridZ, toGridX, toGridZ, onCreated).then(path => {
-      let curvePoints = [this.world.toScene(fromGridX, fromGridZ)];
-
-      for (let i = 1; i < path.length - 1; i++) {
-        curvePoints.push(this.world.toScene(path[i].x, path[i].y));
-      }
-      /* TODO optimize curve
-      let last = new THREE.Vector2(fromGridX, fromGridZ);
-      let lastDirection = null;
-      for (let i = 1; i < path.length - 1; i++) {
-        const newDirection = last ? new THREE.Vector2(path[i].x, path[i].y).sub(last) : null;
-        if (!lastDirection || !lastDirection.equals(newDirection)) {
-          curvePoints.push(this.world.toScene(path[i].x, path[i].y));
-        }
-        if (last) {
-          lastDirection = newDirection;
-        }
-        last = new THREE.Vector2(path[i].x, path[i].y);
-      }
-      */
-
-      curvePoints.push(this.world.toScene(toGridX, toGridZ));
-      return new THREE.CatmullRomCurve3(curvePoints);
-    });
+    this.easyStar.calculate();
   },
 
   getGrid() {

@@ -27,9 +27,9 @@ const AnimalHandler = {
 
   spawnBunnies(world, amount) {
     for (let i = 0; i < amount; i++) {
-      let spawn = new THREE.Vector2(getRandomInt(0, world.tiles), getRandomInt(0, world.tiles));
-      while (!world.isWalkable(spawn.x, spawn.y)) {
-        spawn = new THREE.Vector2(getRandomInt(0, world.tiles), getRandomInt(0, world.tiles));
+      let spawn = [getRandomInt(0, world.tiles), getRandomInt(0, world.tiles)];
+      while (!world.isWalkable(spawn[0], spawn[1])) {
+        spawn = [getRandomInt(0, world.tiles), getRandomInt(0, world.tiles)];
       }
       let bunny = this.createBunny(world, spawn);
       bunny.age = getRandomInt(0, bunny.traits.lifespan - 1000); // randomize starting age
@@ -52,10 +52,10 @@ const AnimalHandler = {
   },
 
   createBunny(world, spawn) {
-    const region = world.getRegion(spawn.x, spawn.y);
+    const region = world.getRegion(spawn[0], spawn[1]);
     let bunny = new Bunny();
-    let pos = world.toScene(spawn.x, spawn.y);
-    bunny.model.setPosition(pos.x, pos.y, pos.z);
+    let pos = world.toScene(spawn[0], spawn[1]);
+    bunny.model.setPosition(pos[0], 0, pos[1]);
     bunny.region = region;
     this.addBunny(bunny);
     return bunny;
@@ -92,13 +92,13 @@ const AnimalHandler = {
     }
   },
 
-  update(delta) {
+  update(world, delta) {
     for (let i = 0; i < this.maleBunnies.length; i++) {
-      let matrix = this.maleBunnies[i].update(delta);
+      let matrix = this.maleBunnies[i].update(world, delta);
       this.maleBunniesMesh.setMatrixAt(i, matrix);
     }
     for (let i = 0; i < this.femaleBunnies.length; i++) {
-      let matrix = this.femaleBunnies[i].update(delta);
+      let matrix = this.femaleBunnies[i].update(world, delta);
       this.femaleBunniesMesh.setMatrixAt(i, matrix);
     }
     this.maleBunniesMesh.update();

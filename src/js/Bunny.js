@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import {
-  debugBox,
-  debugLine,
   DIAGONAL_DISTANCE,
+  distance,
   getClosestNeighborTile,
   getRandomArbitrary,
   getRandomBoxMuller,
@@ -96,18 +95,18 @@ export class Bunny {
 
     if (this.action === Bunny.Actions.searchWater) {
       const tile = this.getCurrentTile(world);
-      if (world.hasWater(tile.x, tile.y)) {
+      if (world.hasWater(tile[0], tile[1])) {
         this.action = Bunny.Actions.drink;
       }
     } else if ((this.action === Bunny.Actions.searchFood || this.action === Bunny.Actions.eat) && this.resourceFound) {
       const tile = this.getCurrentTile(world);
-      if (tile.equals(this.resourceFound.tile)) {
+      if (tile[0] === this.resourceFound.tile[0] && tile[1] === this.resourceFound.tile[1]) {
         this.action = Bunny.Actions.eat;
       }
     } else if (this.action === Bunny.Actions.searchMate && this.resourceFound) {
       const tile = this.getCurrentTile(world);
       const mateTile = this.lastPartner.getCurrentTile(world);
-      if (tile.distanceTo(mateTile) <= DIAGONAL_DISTANCE) {
+      if (distance(tile[0], tile[1], mateTile[0], mateTile[1]) <= DIAGONAL_DISTANCE) {
         this.action = Bunny.Actions.mate;
       }
     }
@@ -210,32 +209,22 @@ export class Bunny {
   act(world) {
     if (this.action === Bunny.Actions.searchWater && !this.resourceFound) {
       const tile = this.getCurrentTile(world);
-      const closestWaterTile = world.getClosestWaterTile(tile.x, tile.y, this.traits.rangeOfSight);
+      const closestWaterTile = world.getClosestWaterTile(tile[0], tile[1], this.traits.rangeOfSight);
       if (!closestWaterTile) {
         this.jumpRandom(world);
         return;
       }
       this.resourceFound = closestWaterTile;
-      this.model.jumpTo(closestWaterTile, world).catch(e => {
-        console.log(e);
-        console.error("couldn't find closest water tile for grid", tile.x, tile.y);
-        debugBox(world, tile.x, tile.y, 0x0000ff);
-      });
+      this.model.jumpTo(closestWaterTile);
     } else if (this.action === Bunny.Actions.searchFood && !this.resourceFound) {
       const tile = this.getCurrentTile(world);
-      const food = this.region.getFood(tile.x, tile.y, this.traits.rangeOfSight);
+      const food = this.region.getFood(tile[0], tile[1], this.traits.rangeOfSight);
       if (food === null) {
         this.jumpRandom(world);
         return;
       }
       this.resourceFound = food;
-      this.model.jumpTo(food.tile, world).catch(e => {
-        console.log(e);
-        console.error("couldn't find closest food tile for grid", tile.x, tile.y);
-        debugBox(world, tile.x, tile.y, 0xff0000);
-        debugBox(world, food.x, food.y, 0xffff00);
-        debugLine(world, tile.x, tile.y, food.x, food.y, 10, 0xff0000);
-      });
+      this.model.jumpTo(food.tile);
     } else if (this.action === Bunny.Actions.searchMate && !this.resourceFound) {
       // only males search actively for females. females just jump around waiting for the males to approach.
       if (!this.traits.sex) {
@@ -244,7 +233,7 @@ export class Bunny {
       }
       // male here
       const tile = this.getCurrentTile(world);
-      let femaleMatingPartner = world.getAnimals(tile.x, tile.y, this.traits.rangeOfSight).filter(animal => {
+      let femaleMatingPartner = world.getAnimals(tile[0], tile[1], this.traits.rangeOfSight).filter(animal => {
         return animal.traits.sex !== this.traits.sex && !animal.isDead() && animal.reproductionUrge >= .5 &&
           animal.action === Bunny.Actions.searchMate && animal.resourceFound === null;
       });
@@ -259,14 +248,8 @@ export class Bunny {
             femaleMate.model.stop();
             const mateTile = femaleMate.getCurrentTile(world);
             // jump to females neighbor tile
-            const targetTile = getClosestNeighborTile(world, tile.x, tile.y, mateTile.x, mateTile.y);
-            this.model.jumpTo(targetTile, world).catch(e => {
-              console.log(e);
-              console.error("couldn't find closest tile to mate ", mateTile.x, mateTile.y);
-              debugBox(world, tile.x, tile.y, 0xff0000);
-              debugBox(world, targetTile.x, targetTile.y, 0xffff00);
-              debugLine(world, tile.x, tile.y, targetTile.x, targetTile.y, 10, 0xff0000);
-            });
+            const targetTile = getClosestNeighborTile(world, tile[0], tile[1], mateTile[0], mateTile[1]);
+            this.model.jumpTo(targetTile);
             return;
           } else {
             // you've got rejected :(
@@ -275,8 +258,9 @@ export class Bunny {
         }
       }
     } else if (this.action === Bunny.Actions.mate && !this.model.isJumping()) {
-      this.model.lookAt(this.lastPartner.model.getPosition());
-      this.model.jump(4);
+      const p = this.lastPartner.model.getPositionArray();
+      this.model.lookAt(new THREE.Vector3(p[0], 0, p[1]));
+      this.model.jumpN(5);
     } else if (this.action === Bunny.Actions.idle && Math.random() < .75) {
       this.jumpRandom(world);
     }
@@ -286,13 +270,16 @@ export class Bunny {
     if (this.model.isMoving()) {
       return;
     }
-    const offset = new THREE.Vector2(
+    const offset = [
       getRandomInt(0, this.traits.rangeOfSight) * (Math.random() > .5 ? 1 : -1),
       getRandomInt(0, this.traits.rangeOfSight) * (Math.random() > .5 ? 1 : -1)
-    );
-    const scenePosition = this.model.getPosition();
-    const tile = world.toGrid(scenePosition.x, scenePosition.z);
-    this.model.jumpToIgnore(tile.add(offset), world);
+    ];
+    const scenePosition = this.model.getPositionArray();
+    const from = world.toGrid(scenePosition[0], scenePosition[1]);
+    const to = [from[0] + offset[0], from[1] + offset[1]];
+    if(world.isReachable(from, to)) {
+      this.model.jumpTo(to);
+    }
   }
 
   isDead() {
@@ -338,8 +325,8 @@ export class Bunny {
   }
 
   getCurrentTile(world) {
-    const scenePosition = this.model.getPosition();
-    return world.toGrid(scenePosition.x, scenePosition.z);
+    const scenePosition = this.model.getPositionArray();
+    return world.toGrid(scenePosition[0], scenePosition[1]);
   }
 
 }

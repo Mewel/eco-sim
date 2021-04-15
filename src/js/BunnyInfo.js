@@ -32,8 +32,8 @@ export class BunnyInfo {
 
   update() {
     if (this.isBunnyAssigned() && this.rangeOfSightCircle) {
-      const p = this.bunny.model.getPosition();
-      this.rangeOfSightCircle.position.set(p.x, 1, p.z);
+      const p = this.bunny.model.getPositionArray();
+      this.rangeOfSightCircle.position.set(p[0], 1, p[1]);
     }
   }
 

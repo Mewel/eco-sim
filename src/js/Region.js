@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {debugBox} from "./util/util";
+import {debugBox, distance} from "./util/util";
 import {Food} from "./Food";
 
 export class Region {
@@ -48,7 +48,7 @@ export class Region {
   addFood(index, x, z) {
     const food = new Food(index, x, z);
     const scenePosition = this.world.toScene(x, z);
-    food.model.position.copy(scenePosition);
+    food.model.position.set(scenePosition[0], 0, scenePosition[1]);
     food.updateSize();
     food.model.updateMatrix();
     this.food.set(x + "_" + z, food);
@@ -56,12 +56,11 @@ export class Region {
   }
 
   getFood(gridX, gridZ, maxGridDistance) {
-    const fromTile = new THREE.Vector2(gridX, gridZ);
     const result = [];
     this.food.forEach(food => {
-      const distance = fromTile.distanceTo(food.tile);
-      if (distance <= maxGridDistance && food.value >= .1) {
-        result.push({distance, food: food});
+      const d = distance(gridX, gridZ, food.tile[0], food.tile[1]);
+      if (d <= maxGridDistance && food.value >= .1) {
+        result.push({d, food: food});
       }
     })
     if (result.length > 0) {
@@ -77,12 +76,13 @@ export class Region {
   }
 
   debug() {
+    /* TODO
     let color = new THREE.Color(Math.random(), Math.random(), Math.random());
     Object.keys(this.tiles).forEach(key => {
       const x = parseInt(key.split("_")[0]);
       const z = parseInt(key.split("_")[1]);
       debugBox(this.world, x, z, color)
-    });
+    });*/
   }
 
   removeAnimal(animal) {
