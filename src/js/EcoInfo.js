@@ -71,7 +71,7 @@ const EcoInfo = {
   },
 
   updateStats(stats) {
-    tickElement.textContent = "Tick: " + stats.tick;
+    tickElement.textContent = "Tick: " + stats.tick + " (" + stats.tps + "/s)";
   },
 
   updateAnimal() {

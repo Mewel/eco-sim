@@ -15,7 +15,7 @@ export class Region {
     let toExploreStack = [[gridX, gridZ]];
     while (toExploreStack.length > 0) {
       const tile = toExploreStack.pop();
-      if (this.#isValidTile(tile)) {
+      if (this.isValidTile(tile)) {
         this.expand(tile, toExploreStack);
       }
     }
@@ -30,13 +30,13 @@ export class Region {
     ];
     for (let i = 0; i < sides.length; i += 2) {
       let newTile = [tile[0] + sides[i], tile[1] + sides[i + 1]];
-      if (this.#isValidTile(newTile)) {
+      if (this.isValidTile(newTile)) {
         toExploreStack.push(newTile);
       }
     }
   }
 
-  #isValidTile(tile) {
+  isValidTile(tile) {
     return !(tile[0] < 0 || tile[0] > this.world.tiles || tile[1] < 0 || tile[1] > this.world.tiles ||
       this.isPartOf(tile[0], tile[1]) || this.world.isWater(tile[0], tile[1]) || this.world.hasObstacle(tile[0], tile[1]));
   }
@@ -62,7 +62,7 @@ export class Region {
       if (d <= maxGridDistance && food.value >= .1) {
         result.push({d, food: food});
       }
-    })
+    });
     if (result.length > 0) {
       result.sort((f1, f2) => (f1.distance / f1.food.value) - (f2.distance / f2.food.value));
       return result[0].food;

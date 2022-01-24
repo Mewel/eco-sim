@@ -27,8 +27,11 @@ const mouse = new THREE.Vector2();
 let currentTickTime = 0;
 
 const stats = {
-  tick: 0
-};
+  tick: 0,
+  tps: 0,
+  tpsTime: 0,
+  tpsTick: 0
+}
 
 init();
 
@@ -214,6 +217,12 @@ function onPointerUp(event) {
 function tick() {
   const delta = tickClock.getDelta();
   currentTickTime += delta;
+  if(stats.tpsTime > 1) {
+    stats.tps = stats.tick - stats.tpsTick;
+    stats.tpsTime = 0;
+    stats.tpsTick = stats.tick;
+  }
+  stats.tpsTime += delta;
   if (currentTickTime > (1 / Settings.speed)) {
     Statistics.track(stats.tick);
     stats.tick++;

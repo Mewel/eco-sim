@@ -18,7 +18,7 @@ const InternalSettings = {
   },
   onChange: []
 }
-dwwwwwww
+
 function localStorageWithDefault(key, type, defaultValue) {
   const result = localStorage.getItem(key) ?? defaultValue;
   if (type === "float" || type === "int") {
