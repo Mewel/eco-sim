@@ -45,7 +45,7 @@ const Collection = {
 }
 
 function addOption(dataSet1, dataSet2, key) {
-  let option = document.createElement("option");
+  const option = document.createElement("option");
   option.textContent = key;
   option.value = key;
   dataSet1.append(option.cloneNode(true));
@@ -63,7 +63,7 @@ const Statistics = {
     this.dataSet1 = document.getElementById("chartDataSet1");
     this.dataSet2 = document.getElementById("chartDataSet2");
     addOption(this.dataSet1, this.dataSet2, "none");
-    for (let key of Object.keys(Collection)) {
+    for (const key of Object.keys(Collection)) {
       addOption(this.dataSet1, this.dataSet2, key);
     }
     this.chart = new Chart(document.getElementById("chart").getContext("2d"), this.getChartConfig());

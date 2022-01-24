@@ -31,7 +31,7 @@ const AnimalHandler = {
       while (!world.isWalkable(spawn[0], spawn[1])) {
         spawn = [getRandomInt(0, world.tiles), getRandomInt(0, world.tiles)];
       }
-      let bunny = this.createBunny(world, spawn);
+      const bunny = this.createBunny(world, spawn);
       bunny.age = getRandomInt(0, bunny.traits.lifespan - 1000); // randomize starting age
     }
     /*let spawn;
@@ -53,8 +53,8 @@ const AnimalHandler = {
 
   createBunny(world, spawn) {
     const region = world.getRegion(spawn[0], spawn[1]);
-    let bunny = new Bunny();
-    let pos = world.toScene(spawn[0], spawn[1]);
+    const bunny = new Bunny();
+    const pos = world.toScene(spawn[0], spawn[1]);
     bunny.model.setPosition(pos[0], 0, pos[1]);
     bunny.region = region;
     this.addBunny(bunny);
@@ -84,7 +84,7 @@ const AnimalHandler = {
 
   removeBunny(mesh, arr, model) {
     if (mesh.removeInstance(model.index)) {
-      let removed = arr.pop();
+      const removed = arr.pop();
       if (model.index < arr.length) {
         arr[model.index] = removed;
         arr[model.index].index = model.index;
@@ -94,11 +94,11 @@ const AnimalHandler = {
 
   update(world, delta) {
     for (let i = 0; i < this.maleBunnies.length; i++) {
-      let matrix = this.maleBunnies[i].update(world, delta);
+      const matrix = this.maleBunnies[i].update(world, delta);
       this.maleBunniesMesh.setMatrixAt(i, matrix);
     }
     for (let i = 0; i < this.femaleBunnies.length; i++) {
-      let matrix = this.femaleBunnies[i].update(world, delta);
+      const matrix = this.femaleBunnies[i].update(world, delta);
       this.femaleBunniesMesh.setMatrixAt(i, matrix);
     }
     this.maleBunniesMesh.update();

@@ -47,7 +47,7 @@ function getMin(arr) {
 }
 
 function debugBox(world, gridX, gridZ, color) {
-  let mesh = new THREE.Mesh(new THREE.BoxGeometry(5, 50, 5), new THREE.MeshBasicMaterial({color: color}));
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(5, 50, 5), new THREE.MeshBasicMaterial({color: color}));
   const pos = world.toScene(gridX, gridZ);
   mesh.position.set(pos[0], 0, pos[1]);
   world.worldGroup.add(mesh);
@@ -58,7 +58,7 @@ function debugLine(world, fromGridX, fromGridZ, toGridX, toGridZ, y, color) {
   const to = world.toScene(toGridX, toGridZ);
   const geometry = new THREE.BufferGeometry()
     .setFromPoints([new THREE.Vector3(from[0], y, from[1]), new THREE.Vector3(to[0], y, to[1])]);
-  let line = new THREE.Line(geometry, new THREE.LineBasicMaterial({color: color}));
+  const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({color: color}));
   world.worldGroup.add(line);
 }
 
@@ -108,7 +108,7 @@ function deepProxy(target, handler) {
       deleteProperty(target, key) {
         if (Reflect.has(target, key)) {
           unproxy(target, key);
-          let deleted = Reflect.deleteProperty(target, key);
+          const deleted = Reflect.deleteProperty(target, key);
           if (deleted && handler.deleteProperty) {
             handler.deleteProperty(target, [...path, key]);
           }
@@ -126,7 +126,7 @@ function deepProxy(target, handler) {
       preproxy.delete(obj[key]);
     }
 
-    for (let k of Object.keys(obj[key])) {
+    for (const k of Object.keys(obj[key])) {
       if (typeof obj[key][k] === 'object') {
         unproxy(obj[key], k);
       }
@@ -135,12 +135,12 @@ function deepProxy(target, handler) {
   }
 
   function proxify(obj, path) {
-    for (let key of Object.keys(obj)) {
+    for (const key of Object.keys(obj)) {
       if (typeof obj[key] === 'object') {
         obj[key] = proxify(obj[key], [...path, key]);
       }
     }
-    let p = new Proxy(obj, makeHandler(path));
+    const p = new Proxy(obj, makeHandler(path));
     preproxy.set(p, obj);
     return p;
   }

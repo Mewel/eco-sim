@@ -5,7 +5,7 @@ import './../css/app.css';
 import * as THREE from 'three';
 import * as TWEEN from "@tweenjs/tween.js";
 
-import {GUI} from 'three/examples/jsm/libs/dat.gui.module';
+import {GUI} from 'three/examples/jsm/libs/lil-gui.module.min.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {MapControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {Settings} from "./Settings";
@@ -18,7 +18,7 @@ import {AnimalHandler} from "./AnimalHandler";
 import {Statistics} from "./Statistics";
 import {EcoSetup} from "./EcoSetup";
 
-let camera, controls, scene, renderer, dirLight, animationClock, tickClock, mixers, world, bunnyInfo, audioListener,
+let camera, controls, scene, renderer, dirLight, animationClock, tickClock, world, bunnyInfo, audioListener,
   fps, run;
 let waveAudio, windAudio;
 
@@ -41,7 +41,6 @@ function init() {
   // animation
   animationClock = new THREE.Clock();
   tickClock = new THREE.Clock();
-  mixers = [];
 
   // scene stuff
   scene = new THREE.Scene();
@@ -86,9 +85,9 @@ function init() {
   Statistics.select("bunnies (sum)", 0);
 
   buildWorld();
-  Settings.onChange.push((key, value) => {
+  Settings.onChange.push((key) => {
     if (key === "world.tiles" || key === "world.waterLandRatio" || key === "world.disruption") {
-      let startTime = new Date().valueOf();
+      const startTime = new Date().valueOf();
       world.dispose();
       scene.remove(world.worldGroup);
       buildWorld();

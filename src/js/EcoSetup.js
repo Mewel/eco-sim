@@ -126,7 +126,7 @@ class NumberController {
   }
 
   resolveBinding() {
-    let paths = this.target.split(".");
+    const paths = this.target.split(".");
     this.object = Settings;
     for (let i = 0; i < paths.length - 1; i++) {
       this.object = this.object[paths[i]];
@@ -141,7 +141,7 @@ class NumberController {
 
   updateSlider() {
     const value = this.type === "percentage" ? this.getValue() * 100 : this.getValue();
-    let progress = (value - this.min) / (this.max - this.min);
+    const progress = (value - this.min) / (this.max - this.min);
     this.sliderProgressElement.style.width = (progress * 100) + "%";
   }
 

@@ -1,4 +1,4 @@
-export let waterCenter = [
+export const waterCenter = [
   -61.42135623730951,
   -50.62762434511114,
   -44.39559625651243,
@@ -40001,7 +40001,7 @@ export let waterCenter = [
   -54.96507859093816
 ]
 
-export let islandData = [
+export const islandData = [
   -66.76906714511114,
   -66.76906714511114,
   -69.50335541881937,
@@ -80004,7 +80004,7 @@ export let islandData = [
   -54.96507859093816
 ]
 
-export let islandData2 = [
+export const islandData2 = [
   -61.42135623730951,
   -60.71602609511113,
   -59.96210696382411,

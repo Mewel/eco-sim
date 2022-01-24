@@ -6,11 +6,11 @@ export class DynamicInstancedMesh extends THREE.InstancedMesh {
     super(geometry, material, count);
     this.bufferCapacity = capacity < count ? count : capacity;
     if (count < capacity) {
-      this.#updateCapacity();
+      this.updateCapacity();
     }
   }
 
-  #updateCapacity() {
+  updateCapacity() {
     const matrixBuffer = new Float32Array(this.instanceMatrix.itemSize * this.bufferCapacity);
     matrixBuffer.set(this.instanceMatrix.array);
     this.instanceMatrix.count = this.bufferCapacity;

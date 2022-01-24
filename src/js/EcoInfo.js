@@ -75,7 +75,7 @@ const EcoInfo = {
   },
 
   updateAnimal() {
-    let dead = this.animal.isDead();
+    const dead = this.animal.isDead();
     deadElement.style.display = dead ? "block" : "none";
     if (dead) {
       deadElement.textContent = "died because of " + this.animal.dead.causeOfDeath;

@@ -29,7 +29,7 @@ export class Region {
       1, -1, 0, -1, -1, -1,
     ];
     for (let i = 0; i < sides.length; i += 2) {
-      let newTile = [tile[0] + sides[i], tile[1] + sides[i + 1]];
+      const newTile = [tile[0] + sides[i], tile[1] + sides[i + 1]];
       if (this.isValidTile(newTile)) {
         toExploreStack.push(newTile);
       }
@@ -66,9 +66,8 @@ export class Region {
     if (result.length > 0) {
       result.sort((f1, f2) => (f1.distance / f1.food.value) - (f2.distance / f2.food.value));
       return result[0].food;
-    } else {
-      return null;
     }
+    return null;
   }
 
   hasFood(x, z) {
@@ -87,7 +86,7 @@ export class Region {
 
   removeAnimal(animal) {
     // swap remove -> fast and we don't care about the order
-    let index = this.animals.indexOf(animal);
+    const index = this.animals.indexOf(animal);
     if (index >= 0) {
       this.animals[index] = this.animals[this.animals.length - 1];
       this.animals.pop();

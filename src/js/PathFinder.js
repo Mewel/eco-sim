@@ -27,7 +27,7 @@ const PathFinder = {
   getGrid() {
     const grid = [];
     for (let z = 0; z < this.world.tiles; z++) {
-      let row = [];
+      const row = [];
       grid.push(row);
       for (let x = 0; x < this.world.tiles; x++) {
         const terrainValue = (this.terrainGrid[z] && this.terrainGrid[z][x]) ? this.terrainGrid[z][x] : 0;
@@ -41,7 +41,7 @@ const PathFinder = {
   buildTerrainGrid() {
     this.terrainGrid = [];
     for (let z = 0; z < this.world.tiles; z++) {
-      let row = [];
+      const row = [];
       this.terrainGrid.push(row);
       for (let x = 0; x < this.world.tiles; x++) {
         row.push(this.world.isWater(x, z) ? 1 : 0);

@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import {Object3D} from "three";
 
 export class Food {
