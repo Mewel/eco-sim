@@ -235,6 +235,7 @@ function animate(time) {
   requestAnimationFrame(animate);
   if (run) {
     const delta = animationClock.getDelta();
+    PathFinder.update();
     EcoInfo.update(stats);
     TWEEN.update(time);
     if (AnimalHandler.initialized && Settings.speed > 0) {

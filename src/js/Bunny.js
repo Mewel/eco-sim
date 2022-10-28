@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import {
+  debugBox,
+  debugLine,
   DIAGONAL_DISTANCE,
   distance,
   getClosestNeighborTile,
@@ -215,7 +217,11 @@ export class Bunny {
         return;
       }
       this.resourceFound = closestWaterTile;
-      this.model.jumpTo(closestWaterTile);
+      this.model.jumpTo(closestWaterTile, world).catch(e => {
+        console.log(e);
+        console.error("couldn't find closest water tile for grid", tile.x, tile.y);
+        debugBox(world, tile.x, tile.y, 0x0000ff);
+      });
     } else if (this.action === Bunny.Actions.searchFood && !this.resourceFound) {
       const tile = this.getCurrentTile(world);
       const food = this.region.getFood(tile[0], tile[1], this.traits.rangeOfSight);
@@ -224,7 +230,13 @@ export class Bunny {
         return;
       }
       this.resourceFound = food;
-      this.model.jumpTo(food.tile);
+      this.model.jumpTo(food.tile, world).catch(e => {
+        console.log(e);
+        console.error("couldn't find closest food tile for grid", tile.x, tile.y);
+        debugBox(world, tile.x, tile.y, 0xff0000);
+        debugBox(world, food.x, food.y, 0xffff00);
+        debugLine(world, tile.x, tile.y, food.x, food.y, 10, 0xff0000);
+      });
     } else if (this.action === Bunny.Actions.searchMate && !this.resourceFound) {
       // only males search actively for females. females just jump around waiting for the males to approach.
       if (!this.traits.sex) {
@@ -249,7 +261,13 @@ export class Bunny {
             const mateTile = femaleMate.getCurrentTile(world);
             // jump to females neighbor tile
             const targetTile = getClosestNeighborTile(world, tile[0], tile[1], mateTile[0], mateTile[1]);
-            this.model.jumpTo(targetTile);
+            this.model.jumpTo(targetTile, world).catch(e => {
+              console.log(e);
+              console.error("couldn't find closest tile to mate ", mateTile.x, mateTile.y);
+              debugBox(world, tile.x, tile.y, 0xff0000);
+              debugBox(world, targetTile.x, targetTile.y, 0xffff00);
+              debugLine(world, tile.x, tile.y, targetTile.x, targetTile.y, 10, 0xff0000);
+            });
             return;
           } else {
             // you've got rejected :(
@@ -260,7 +278,7 @@ export class Bunny {
     } else if (this.action === Bunny.Actions.mate && !this.model.isJumping()) {
       const p = this.lastPartner.model.getPositionArray();
       this.model.lookAt(new THREE.Vector3(p[0], 0, p[1]));
-      this.model.jumpN(5);
+      this.model.jump(4);
     } else if (this.action === Bunny.Actions.idle && Math.random() < .75) {
       this.jumpRandom(world);
     }
@@ -277,9 +295,10 @@ export class Bunny {
     const scenePosition = this.model.getPositionArray();
     const from = world.toGrid(scenePosition[0], scenePosition[1]);
     const to = [from[0] + offset[0], from[1] + offset[1]];
-    if(world.isReachable(from, to)) {
+    this.model.jumpToIgnore(to, world);
+    /*if(world.isReachable(from, to)) {
       this.model.jumpTo(to);
-    }
+    }*/
   }
 
   isDead() {
