@@ -103,7 +103,7 @@ export class Bunny3D {
         this.stop(false);
       }
     }
-    let scale = this.getScale();
+    const scale = this.getScale();
     this.object3D.scale.set(scale, scale, scale);
     this.object3D.updateMatrix();
     return this.object3D.matrix;
@@ -132,9 +132,8 @@ export class Bunny3D {
   getPosition(yZero = true) {
     if (yZero) {
       return new THREE.Vector3(this.object3D.position.x, 0, this.object3D.position.z);
-    } else {
-      return this.object3D.position;
     }
+    return this.object3D.position;
   }
 
   lookAt(target) {

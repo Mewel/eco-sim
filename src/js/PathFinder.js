@@ -31,7 +31,7 @@ const PathFinder = {
 
   getCurve(fromGridX, fromGridZ, toGridX, toGridZ, onCreated = null) {
     return this.find(fromGridX, fromGridZ, toGridX, toGridZ, onCreated).then(path => {
-      let curvePoints = [this.world.toSceneVector3(fromGridX, fromGridZ)];
+      const curvePoints = [this.world.toSceneVector3(fromGridX, fromGridZ)];
       for (let i = 1; i < path.length - 1; i++) {
         curvePoints.push(this.world.toSceneVector3(path[i].x, path[i].y));
       }

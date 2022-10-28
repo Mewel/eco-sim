@@ -106,27 +106,27 @@ export class TerrainBuilder {
     const size = tiles * tiles;
     const imageData = new Uint8Array(3 * size);
 
-    let shoreWater = new THREE.Color(0x86DAFF);
-    let water = new THREE.Color(0x1695CD);
+    const shoreWater = new THREE.Color(0x86DAFF);
+    const water = new THREE.Color(0x1695CD);
 
-    let beach = new THREE.Color(0xFFF580);
-    let gras = new THREE.Color(0x65D95A);
-    let darkGras = new THREE.Color(0x39BF2C);
+    const beach = new THREE.Color(0xFFF580);
+    const gras = new THREE.Color(0x65D95A);
+    const darkGras = new THREE.Color(0x39BF2C);
 
     for (let z = 0; z < tiles; z++) {
       for (let x = 0; x < tiles; x++) {
-        let i = z * tiles + x;
-        if (heightData[i] < 0) {
-          let shoreToWater = water.clone().lerp(shoreWater, smoothstep(.6, 1, heightData[i] + 1));
-          imageData[i * 3] = shoreToWater.r * 255;
-          imageData[i * 3 + 1] = shoreToWater.g * 255;
-          imageData[i * 3 + 2] = shoreToWater.b * 255;
+        const index = z * tiles + x;
+        if (heightData[index] < 0) {
+          const shoreToWater = water.clone().lerp(shoreWater, smoothstep(.6, 1, heightData[index] + 1));
+          imageData[index * 3] = shoreToWater.r * 255;
+          imageData[index * 3 + 1] = shoreToWater.g * 255;
+          imageData[index * 3 + 2] = shoreToWater.b * 255;
         } else {
-          let beachToGras = beach.clone().lerp(gras, smoothstep(0, 0.3, heightData[i]));
-          let grasToDark = beachToGras.lerp(darkGras, heightData[i]);
-          imageData[i * 3] = grasToDark.r * 255;
-          imageData[i * 3 + 1] = grasToDark.g * 255;
-          imageData[i * 3 + 2] = grasToDark.b * 255;
+          const beachToGras = beach.clone().lerp(gras, smoothstep(0, 0.3, heightData[index]));
+          const grasToDark = beachToGras.lerp(darkGras, heightData[index]);
+          imageData[index * 3] = grasToDark.r * 255;
+          imageData[index * 3 + 1] = grasToDark.g * 255;
+          imageData[index * 3 + 2] = grasToDark.b * 255;
         }
       }
     }

@@ -15,11 +15,11 @@ export class World {
     this.tileSize = tileSize;
 
     this.worldGroup = new THREE.Group();
-    let baseHeightData = this.generateHeight(tiles, tiles, tileSize, Settings.world.waterLandRatio, Settings.world.disruption);
+    const baseHeightData = this.generateHeight(tiles, tiles, tileSize, Settings.world.waterLandRatio, Settings.world.disruption);
     let max = getMax(baseHeightData);
     while (max < 0) {
-      let min = getMin(baseHeightData);
-      let tenPercent = Math.abs(min - max) / 10;
+      const min = getMin(baseHeightData);
+      const tenPercent = Math.abs(min - max) / 10;
       baseHeightData.forEach(d => d + tenPercent);
       max = getMax(baseHeightData);
     }
@@ -35,7 +35,7 @@ export class World {
     this.obstacles = {};
     this.waterMap = [];
 
-    let scope = this;
+    const scope = this;
     this.updateWaterFunction = (key, value) => {
       if (key === "speed") {
         scope.water.material.uniforms['flowDirection'] = {
@@ -68,7 +68,7 @@ export class World {
         const border = Math.min(Math.min(borderX, borderY), d + cN);
 
         // world
-        let disruptionInverse = 3.5 - (disruption * 3);
+        const disruptionInverse = 3.5 - (disruption * 3);
         const world = worldNoise.simplex2(x / (size * disruptionInverse), y / (size * disruptionInverse)); // -1 -> 1
         const amplify = (Math.min(border, world) * 100) + (40 * waterLandRatio);
         data[x + y * height] = amplify + (Math.abs(cN) * 50);
@@ -77,7 +77,7 @@ export class World {
     return data;
 
     function smoothstep(min, max, value) {
-      let x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+      const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
       return x * x * (3 - 2 * x);
     }
   }
@@ -90,7 +90,7 @@ export class World {
   normalize(arr) {
     const max = getMax(arr);
     const min = getMin(arr) * -1;
-    let normalized = [];
+    const normalized = [];
     arr.forEach(v => normalized.push(v < 0 ? v / min : v / max));
     return normalized;
   }
@@ -123,9 +123,9 @@ export class World {
     while (todo.length > 0) {
       const newTodo = [];
       for (let j = 0; j < todo.length; j++) {
-        let hv = check(data, todo[j], i, [0, -1, 1, 0, 0, 1, -1, 0], this.tiles); // horizontal/vertical
-        let diag = check(data, todo[j], i, [-1, -1, 1, -1, 1, 1, -1, 1], this.tiles); // diagonal
-        let best = hv ? (diag ? (diag.index < hv.index ? diag : hv) : hv) : diag;
+        const hv = check(data, todo[j], i, [0, -1, 1, 0, 0, 1, -1, 0], this.tiles); // horizontal/vertical
+        const diag = check(data, todo[j], i, [-1, -1, 1, -1, 1, 1, -1, 1], this.tiles); // diagonal
+        const best = hv ? (diag ? (diag.index < hv.index ? diag : hv) : hv) : diag;
         if (best) {
           todo[j].vector = [best.vector[0], best.vector[1]];
           todo[j].index = i;
@@ -140,8 +140,8 @@ export class World {
 
     function check(data, curr, i, arr, tiles) {
       for (let j = 0; j < arr.length; j += 2) {
-        let x = curr.x + arr[j];
-        let y = curr.y + arr[j + 1];
+        const x = curr.x + arr[j];
+        const y = curr.y + arr[j + 1];
         if (x < 0 || y < 0 || x >= tiles || y >= tiles) {
           continue;
         }
@@ -154,7 +154,7 @@ export class World {
   }
 
   #updateWaterFound(scope, target, center, minDistance, oldTarget) {
-    let distance = center.distanceTo(target);
+    const distance = center.distanceTo(target);
     if (target.x >= 0 && target.x < scope.tiles && target.y >= 0 && target.y < scope.tiles &&
       distance < minDistance && scope.hasWater(target.x, target.y) &&
       !scope.isWater(target.x, target.y) && !scope.hasObstacle(target.x, target.y)) {
@@ -177,9 +177,9 @@ export class World {
         this.obstacles[x + "_" + z] = true;
         const sceneVector = this.toScene(x, z);
         const key = modelNames[getRandomInt(0, modelNames.length)];
-        let scale = 20;
-        let yScale = getRandomArbitrary(-5, 5);
-        let scaleMatrix = new THREE.Matrix4();
+        const scale = 20;
+        const yScale = getRandomArbitrary(-5, 5);
+        const scaleMatrix = new THREE.Matrix4();
         scaleMatrix.set(scale,
           0, 0, sceneVector[0],
           0, scale + yScale, 0, 0,
@@ -218,7 +218,7 @@ export class World {
     for (let z = 0; z < this.tiles; z++) {
       for (let x = 0; x < this.tiles; x++) {
         if (!this.isWater(x, z) && !this.hasObstacle(x, z) && this.getRegion(x, z) === null) {
-          let region = new Region(this, this.regions.length);
+          const region = new Region(this, this.regions.length);
           this.regions.push(region);
           region.build(x, z);
         }

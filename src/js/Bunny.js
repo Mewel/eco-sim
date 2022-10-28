@@ -202,10 +202,9 @@ export class Bunny {
     }
     if (needs.length === 0) {
       return busy ? this.action : Bunny.Actions.idle;
-    } else {
-      const resultingNeed = needs.reduce((need, nextNeed) => (nextNeed.importance > need.importance ? nextNeed : need), needs[0]);
-      return resultingNeed.action;
     }
+    const resultingNeed = needs.reduce((need, nextNeed) => (nextNeed.importance > need.importance ? nextNeed : need), needs[0]);
+    return resultingNeed.action;
   }
 
   act(world) {
@@ -245,7 +244,7 @@ export class Bunny {
       }
       // male here
       const tile = this.getCurrentTile(world);
-      let femaleMatingPartner = world.getAnimals(tile[0], tile[1], this.traits.rangeOfSight).filter(animal => {
+      const femaleMatingPartner = world.getAnimals(tile[0], tile[1], this.traits.rangeOfSight).filter(animal => {
         return animal.traits.sex !== this.traits.sex && !animal.isDead() && animal.reproductionUrge >= .5 &&
           animal.action === Bunny.Actions.searchMate && animal.resourceFound === null;
       });
@@ -253,7 +252,7 @@ export class Bunny {
         this.jumpRandom(world);
       } else {
         for (let i = 0; i < femaleMatingPartner.length; i++) {
-          let femaleMate = femaleMatingPartner[i];
+          const femaleMate = femaleMatingPartner[i];
           if (femaleMate.isValidMatingPartner(this)) {
             this.resourceFound = this.lastPartner = femaleMate;
             femaleMate.resourceFound = femaleMate.lastPartner = this;
@@ -324,9 +323,9 @@ export class Bunny {
 
   giveBirth() {
     const babies = [];
-    let numBabies = getRandomInt(1, 5);
+    const numBabies = getRandomInt(1, 5);
     for (let i = 0; i < numBabies; i++) {
-      let babyTraits = {
+      const babyTraits = {
         sex: Math.random() > .5
       };
       Bunny.Traits.forEach(trait => {

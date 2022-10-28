@@ -1,5 +1,4 @@
-import * as THREE from "three";
-import {debugBox, distance} from "./util/util";
+import {distance} from "./util/util";
 import {Food} from "./Food";
 
 export class Region {
@@ -12,7 +11,7 @@ export class Region {
   }
 
   build(gridX, gridZ) {
-    let toExploreStack = [[gridX, gridZ]];
+    const toExploreStack = [[gridX, gridZ]];
     while (toExploreStack.length > 0) {
       const tile = toExploreStack.pop();
       if (this.isValidTile(tile)) {

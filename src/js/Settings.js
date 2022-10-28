@@ -30,7 +30,7 @@ function localStorageWithDefault(key, type, defaultValue) {
 }
 
 const Settings = deepProxy(InternalSettings, {
-  set: function (target, keyArray, value, receiver) {
+  set: function (target, keyArray, value) {
     Settings.onChange.forEach(cb => cb(keyArray.join("."), value));
   }
 });
